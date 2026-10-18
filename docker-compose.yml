@@ -1,0 +1,105 @@
+# ==============================================================================
+# Q-GUARD Production Docker Compose
+# Domain: q-guard.web.id
+# Automated HTTPS (Let's Encrypt) via Caddy + Nginx Frontend + Node.js Backend
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Backend Service (Node.js 22 LTS + SQLite)
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: qguard-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DB_PATH=/app/data/qguard.db
+      - CORS_ORIGIN=https://q-guard.web.id,https://www.q-guard.web.id
+    volumes:
+      - backend_data:/app/data
+      - backend_logs:/app/logs
+    networks:
+      - qguard-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # ----------------------------------------------------------------------------
+  # 2. Frontend Dashboard & Landing Page (Nginx Alpine)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: qguard-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - qguard-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+  # ----------------------------------------------------------------------------
+  # 3. Auto-HTTPS Edge Reverse Proxy (Caddy with Automatic Let's Encrypt TLS)
+  # ----------------------------------------------------------------------------
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: qguard-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"        # HTTP (Auto-redirect to HTTPS & ACME challenge)
+      - "443:443"      # HTTPS (TLS)
+      - "443:443/udp"  # HTTP/3 QUIC support
+    env_file:
+      - .env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data          # Persists SSL certificates
+      - caddy_config:/config      # Persists Caddy state
+      - caddy_logs:/var/log/caddy # Access logs
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - qguard-net
+
+# ------------------------------------------------------------------------------
+# Persistent Storage Volumes
+# ------------------------------------------------------------------------------
+volumes:
+  backend_data:
+    name: qguard_backend_data
+  backend_logs:
+    name: qguard_backend_logs
+  caddy_data:
+    name: qguard_caddy_ssl_data
+  caddy_config:
+    name: qguard_caddy_config
+  caddy_logs:
+    name: qguard_caddy_logs
+
+# ------------------------------------------------------------------------------
+# Isolated Bridge Network
+# ------------------------------------------------------------------------------
+networks:
+  qguard-net:
+    name: qguard_network
+    driver: bridge

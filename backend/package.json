@@ -1,0 +1,23 @@
+{
+  "name": "qguard-backend",
+  "version": "1.0.0",
+  "description": "Q-GUARD Cold-Chain Monitoring Backend API",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --experimental-sqlite src/server.js",
+    "start": "node --experimental-sqlite src/server.js",
+    "migrate": "node --experimental-sqlite src/db/migrate.js",
+    "seed": "node --experimental-sqlite src/db/seed.js",
+    "test": "node src/verify.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^9.0.0",
+    "winston": "^3.11.0"
+  }
+}

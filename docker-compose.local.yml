@@ -1,0 +1,54 @@
+# ==============================================================================
+# Q-GUARD Local Testing Docker Compose
+# Use this for local testing without public domain or SSL:
+# docker compose -f docker-compose.local.yml up -d --build
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: qguard-backend-local
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DB_PATH=/app/data/qguard.db
+      - JWT_SECRET=local-development-secret-key-12345
+      - API_KEY=qguard-dev-api-key
+      - CORS_ORIGIN=*
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/logs:/app/logs
+    networks:
+      - qguard-local-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: qguard-frontend-local
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - qguard-local-net
+
+networks:
+  qguard-local-net:
+    name: qguard_local_network
+    driver: bridge

@@ -1,0 +1,86 @@
+name: Auto Deploy Q-GUARD (q-guard.web.id)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build & Auto-Deploy to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script_stop: true
+          script: |
+            echo "=== [Q-GUARD Auto Deploy Started] ==="
+            
+            # Directory where Q-GUARD repository is cloned
+            APP_DIR="${{ secrets.VPS_APP_DIR || '/opt/qguard' }}"
+            
+            if [ ! -d "$APP_DIR" ]; then
+              echo "Error: Directory $APP_DIR not found. Please clone the repository first."
+              exit 1
+            fi
+            
+            cd "$APP_DIR"
+            
+            # Pull latest changes from git
+            echo "1. Pulling latest code..."
+            git fetch --all
+            git reset --hard origin/main || git reset --hard origin/master
+            
+            # Ensure .env exists
+            if [ ! -f .env ]; then
+              echo "Creating .env from .env.example..."
+              cp .env.example .env
+            fi
+            
+            # Rebuild and restart containers
+            echo "2. Building & restarting Docker containers..."
+            docker compose down --remove-orphans || true
+            docker compose up -d --build
+            
+            # Clean up old unused images to save disk space
+            echo "3. Cleaning up old Docker images..."
+            docker image prune -af --filter "until=24h" || true
+            
+            # Wait for backend and Caddy to be fully healthy
+            echo "4. Verifying application health..."
+            sleep 10
+            
+            # Local health check inside server
+            if curl -sf http://localhost/api/health > /dev/null; then
+              echo "✅ Local Healthcheck PASSED!"
+            else
+              echo "⚠️ Warning: Local healthcheck did not respond immediately, checking docker status:"
+              docker compose ps
+            fi
+            
+            echo "=== [Q-GUARD Auto Deploy Completed Successfully] ==="
+            echo "Portal URL : https://q-guard.web.id"
+            echo "API Health : https://q-guard.web.id/api/health"
+
+      - name: Post-Deploy Remote Domain Check
+        run: |
+          echo "Verifying public domain response for https://q-guard.web.id..."
+          sleep 5
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://q-guard.web.id/api/health || true)
+          echo "HTTP Status: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "🎉 Deployment is LIVE and verified on https://q-guard.web.id"
+          else
+            echo "ℹ️ Domain returned status $STATUS (DNS may still be propagating if newly assigned)."
+          fi

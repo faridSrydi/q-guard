@@ -1,0 +1,56 @@
+# ==============================================================================
+# Q-GUARD Caddy Reverse Proxy Configuration (Automated HTTPS)
+# Domain: q-guard.web.id & www.q-guard.web.id
+# ==============================================================================
+
+{
+    # Global options
+    email {$ACME_EMAIL:admin@q-guard.web.id}
+    admin off
+}
+
+# Production Domain with Automatic Let's Encrypt / ZeroSSL TLS
+q-guard.web.id, www.q-guard.web.id {
+    # Automatic HTTP to HTTPS redirect is handled by Caddy by default
+
+    # Enable modern compression
+    encode gzip zstd
+
+    # Security Headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+
+    # API Endpoints (Reverse proxy to Node.js backend)
+    handle /api/* {
+        reverse_proxy backend:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Dashboard & Landing Page (Reverse proxy to Nginx frontend)
+    handle {
+        reverse_proxy frontend:80 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 10MB
+            roll_keep 5
+        }
+        format console
+    }
+}
