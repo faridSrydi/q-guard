@@ -7,10 +7,10 @@
     <meta name="description" content="Dashboard cerdas IoT & AI pemantauan rantai dingin (cold chain) untuk inspeksi karantina ikan, hewan, dan produk biologi.">
     <link rel="icon" type="image/png" href="./assets/logo.png">
     
-    <!-- Google Fonts: Inter & Outfit -->
+    <!-- Google Fonts: Barlow, Barlow Condensed, Inter, Outfit, JetBrains Mono (SpaceX Modern Typography) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;0,900;1,700;1,800&family=Barlow:ital,wght@0,400;0,500;0,600;0,700;0,800;1,600&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -87,27 +87,27 @@
                 </button>
             </div>
 
-            <!-- Live Telemetry Broadcast Ticker Ribbon -->
+            <!-- Live Telemetry Broadcast Ticker Ribbon (SpaceX Light Mode Style) -->
             <div class="landing-ticker-bar">
                 <div class="landing-container ticker-flex">
                     <div class="ticker-badge">
                         <span class="pulse-dot-green"></span>
-                        <span class="ticker-badge-text">TELEMETRI AKTIF</span>
+                        <span class="ticker-badge-text">TELEMETRI AKTIF // LIVE</span>
                     </div>
                     <div class="ticker-content-wrapper">
                         <div class="ticker-item">
-                            <span class="ticker-tag">Unit QGUARD-001</span>
-                            <span>Koridor Pelayaran Bitung &rarr; Surabaya • Status Rantai Dingin: <strong class="text-success">TERJAGA (-20.8°C)</strong></span>
+                            <span class="ticker-tag">UNIT QGUARD-001</span>
+                            <span>KORIDOR MARITIM BITUNG &rarr; SURABAYA • STATUS RANTAI DINGIN: <strong class="text-success">NOMINAL (-20.8°C)</strong></span>
                         </div>
-                        <span class="ticker-bullet">•</span>
+                        <span class="ticker-bullet">//</span>
                         <div class="ticker-item">
-                            <span class="ticker-tag">Standar Barantin</span>
-                            <span>Sesuai Mandat UU No. 21/2019 & Codex Alimentarius CAC/RCP 8-1976</span>
+                            <span class="ticker-tag">REGULASI</span>
+                            <span>MANDAT UU NO. 21/2019 & CODEX ALIMENTARIUS CAC/RCP 8-1976</span>
                         </div>
-                        <span class="ticker-bullet">•</span>
+                        <span class="ticker-bullet">//</span>
                         <div class="ticker-item">
-                            <span class="ticker-tag">AI Isolation Forest</span>
-                            <span>Filter Defrost Cerdas • Mencegah False Alarm Penolakan Kargo</span>
+                            <span class="ticker-tag">AI ENGINE</span>
+                            <span>ISOLATION FOREST DEFROST FILTER • PREVENT FALSE ALARMS</span>
                         </div>
                     </div>
                 </div>
@@ -125,87 +125,86 @@
                     <div class="hero-content">
                         <div class="hero-badge">
                             <span class="pulse-dot-green"></span>
-                            <span class="badge-text">Inovasi Karantina Cerdas • QIC 2026</span>
-                            <span class="badge-sub-pill">Smart Border</span>
+                            <span class="badge-text">// INOVASI KARANTINA CERDAS • SMART BORDER</span>
+                            <span class="badge-sub-pill">QIC 2026</span>
                         </div>
                         <h1 class="hero-title">
-                            Monitoring Rantai Dingin
-                            <span class="gradient-text">Berbasis IoT & AI</span>
+                            MONITORING RANTAI DINGIN
+                            <span class="spacex-gradient-text">BERBASIS IOT & AI</span>
                         </h1>
                         <p class="hero-lead">
-                            Pengawasan suhu komoditas beku maritim secara <em>real-time</em> & <em>zero-data-loss</em>. Menjamin standar mutu biosekuriti Badan Karantina Indonesia.
+                            Pengawasan suhu komoditas beku maritim secara <em>real-time</em> & <em>zero-data-loss</em>. Menjamin standar biosekuriti dan integritas mutu Badan Karantina Indonesia.
                         </p>
 
-                        <!-- Hardware Chips -->
+                        <!-- Hardware Chips (SpaceX Spec Tags) -->
                         <div class="hero-tech-chips">
-                            <span class="tech-chip"><span class="chip-dot"></span> 3x DS18B20 Anti-Air</span>
-                            <span class="tech-chip"><span class="chip-dot"></span> ESP32 FreeRTOS</span>
-                            <span class="tech-chip"><span class="chip-dot"></span> MicroSD FAT32 Buffer</span>
-                            <span class="tech-chip"><span class="chip-dot"></span> AI Isolation Forest</span>
+                            <span class="tech-chip"><span class="chip-dot"></span> 3X DS18B20 SENSORS</span>
+                            <span class="tech-chip"><span class="chip-dot"></span> ESP32 FREERTOS</span>
+                            <span class="tech-chip"><span class="chip-dot"></span> MICROSD FAT32 BUFFER</span>
+                            <span class="tech-chip"><span class="chip-dot"></span> AI ISOLATION FOREST</span>
                         </div>
 
                         <div class="hero-actions">
                             <button type="button" class="btn btn-primary btn-lg hero-cta-btn" id="btn-hero-dashboard">
-                                <span id="btn-hero-dashboard-text">Masuk ke Dashboard</span>
-                                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <span id="btn-hero-dashboard-text">MASUK KE DASHBOARD</span>
+                                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="9 18 15 12 9 6"/>
                                 </svg>
                             </button>
                             <a href="#simulator" class="btn btn-outline-cyan btn-lg hero-sim-btn">
-                                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"/>
+                                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                     <polygon points="10 8 16 12 10 16 10 8"/>
                                 </svg>
-                                <span>Coba Simulator AI</span>
+                                <span>UJI SIMULATOR AI</span>
                             </a>
                         </div>
 
                         <div class="hero-stats">
                             <div class="stat-pill">
-                                <span class="stat-num text-gradient">0%</span>
-                                <span class="stat-label">Data Loss (MicroSD)</span>
+                                <span class="stat-num">0%</span>
+                                <span class="stat-label">// DATA LOSS (SD BUFFER)</span>
                             </div>
                             <div class="stat-pill">
-                                <span class="stat-num text-gradient">3 Titik</span>
-                                <span class="stat-label">Sensor Spasial</span>
+                                <span class="stat-num">3 TITIK</span>
+                                <span class="stat-label">// SENSOR SPASIAL ARRAY</span>
                             </div>
                             <div class="stat-pill">
-                                <span class="stat-num text-gradient">15-20 Mnt</span>
-                                <span class="stat-label">Deteksi Gradien Dini</span>
+                                <span class="stat-num">15-20 MNT</span>
+                                <span class="stat-label">// DETEKSI GRADIENT DINI</span>
                             </div>
                             <div class="stat-pill">
-                                <span class="stat-num text-gradient">&lt; 5 Mnt</span>
-                                <span class="stat-label">Clearance Barantin</span>
+                                <span class="stat-num">&lt; 5 MNT</span>
+                                <span class="stat-label">// CLEARANCE BARANTIN</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Hero Visual Column: Real 3D Hardware Render Image -->
+                    <!-- Hero Visual Column: Real 3D Hardware Render Image with SpaceX HUD Framing -->
                     <div class="hero-visual">
                         <div class="hero-image-card">
                             <div class="hero-image-wrap">
                                 <img src="./assets/hero-device.jpg" alt="Perangkat IoT Q-GUARD Tri-Probe Cold-Chain" class="hero-img">
                                 <div class="hero-floating-badge top-left">
                                     <span class="pulse-dot-green"></span>
-                                    <span>Unit QGUARD-001 • Online</span>
+                                    <span>UNIT QGUARD-001 // ONLINE</span>
                                 </div>
                                 <div class="hero-floating-badge bottom-right">
                                     <span class="badge-icon">❄️</span>
-                                    <span>Suhu Inti T1: <strong>-21.8°C</strong> (Lolos Codex)</span>
+                                    <span>T1 CORE: <strong>-21.8°C</strong> // CODEX PASSED</span>
                                 </div>
                             </div>
                             <div class="hero-image-caption">
                                 <div class="caption-item">
-                                    <span class="caption-label">Rute Maritim</span>
-                                    <span class="caption-val">Bitung &rarr; Tanjung Perak</span>
+                                    <span class="caption-label">// KORIDOR MARITIM</span>
+                                    <span class="caption-val">BITUNG &rarr; SURABAYA</span>
                                 </div>
                                 <div class="caption-item">
-                                    <span class="caption-label">Mean Kinetic Temp (MKT)</span>
-                                    <span class="caption-val text-success">-20.9°C (Optimal)</span>
+                                    <span class="caption-label">// MEAN KINETIC TEMP</span>
+                                    <span class="caption-val text-success">-20.9°C (OPTIMAL)</span>
                                 </div>
                                 <div class="caption-item">
-                                    <span class="caption-label">Disposisi</span>
-                                    <span class="caption-val text-success">Jalur Hijau</span>
+                                    <span class="caption-label">// STATUS DISPOSISI</span>
+                                    <span class="caption-val text-success">JALUR HIJAU</span>
                                 </div>
                             </div>
                         </div>
@@ -217,10 +216,10 @@
             <section class="landing-section section-probes" id="tentang">
                 <div class="landing-container">
                     <div class="section-heading-center">
-                        <span class="section-tag">INOVASI SENSOR SPASIAL</span>
-                        <h2 class="section-title">Susunan 3 Titik Sensor Tri-Probe Array</h2>
+                        <span class="section-tag">// 01 HARDWARE SPECIFICATION</span>
+                        <h2 class="section-title">SUSUNAN 3 TITIK SENSOR TRI-PROBE ARRAY</h2>
                         <p class="section-subtitle">
-                            Mengukur langsung ke inti komoditas, bukan sekadar udara pintu, untuk mendeteksi perubahan suhu 15–20 menit lebih awal.
+                            Pengukuran langsung ke inti komoditas, buffer es, dan perimeter wadah untuk mendeteksi gradien suhu 15–20 menit lebih awal.
                         </p>
                     </div>
 
@@ -229,35 +228,35 @@
                             <img src="./assets/probe-cross-section.jpg" alt="Susunan Tri-Probe Array Wadah Berpendingin" class="probe-showcase-img">
                             <div class="probe-image-badge">
                                 <span class="pulse-dot-cyan"></span>
-                                <span>3D Cross-Section Wadah Berpendingin & Ikan Tuna</span>
+                                <span>3D CROSS-SECTION // WADAH BERPENDINGIN & IKAN TUNA</span>
                             </div>
                         </div>
 
                         <div class="probe-info-cards">
                             <div class="probe-feature-card">
                                 <div class="probe-feature-header">
-                                    <span class="probe-feature-badge t1">T1 Inti Daging</span>
+                                    <span class="probe-feature-badge t1">// T1 CORE MEAT</span>
                                     <span class="probe-temp-pill text-primary-cyan">-21.8°C</span>
                                 </div>
-                                <h4>Sensor Inti Komoditas (Kedalaman 12 cm)</h4>
-                                <p>Tertancap di pusat daging ikan tuna untuk memastikan titik beku mutlak (≤ -18.0°C) selalu terjaga.</p>
+                                <h4>SENSOR INTI KOMODITAS (DEPTH 12 CM)</h4>
+                                <p>Tertancap di pusat daging ikan tuna untuk memastikan titik beku mutlak (&le; -18.0°C) selalu terjaga.</p>
                             </div>
 
                             <div class="probe-feature-card">
                                 <div class="probe-feature-header">
-                                    <span class="probe-feature-badge t2">T2 Lapisan Es</span>
+                                    <span class="probe-feature-badge t2">// T2 THERMAL BUFFER</span>
                                     <span class="probe-temp-pill text-primary-blue">-20.4°C</span>
                                 </div>
-                                <h4>Thermal Buffer Lapisan Es Curah</h4>
+                                <h4>THERMAL BUFFER LAPISAN ES CURAH</h4>
                                 <p>Memantau ketahanan es pendingin di sekeliling produk selama pelayaran antar-pulau.</p>
                             </div>
 
                             <div class="probe-feature-card">
                                 <div class="probe-feature-header">
-                                    <span class="probe-feature-badge t3">T3 Dekat Pintu</span>
+                                    <span class="probe-feature-badge t3">// T3 PERIMETER SEAL</span>
                                     <span class="probe-temp-pill text-warning">-18.6°C</span>
                                 </div>
-                                <h4>Deteksi Dini Celah & Kebocoran Pintu</h4>
+                                <h4>DETEKSI DINI CELAH & KEBOCORAN PINTU</h4>
                                 <p>Mendeteksi kenaikan suhu eksternal dan bukaan pintu sebelum merusak mutu inti komoditas.</p>
                             </div>
                         </div>
@@ -269,36 +268,39 @@
             <section class="landing-section section-simulator" id="simulator">
                 <div class="landing-container">
                     <div class="section-heading-center">
-                        <span class="section-tag">SIMULATOR INTERAKTIF</span>
-                        <h2 class="section-title">Uji Simulasi Risiko Termal & AI Cerdas</h2>
+                        <span class="section-tag">// 02 MISSION SIMULATION</span>
+                        <h2 class="section-title">UJI SIMULASI RISIKO TERMAL & MULTIVARIATE AI</h2>
                         <p class="section-subtitle">
-                            Klik skenario di bawah untuk melihat respon langsung sensor dan keputusan resmi inspeksi karantina.
+                            Uji respons telemetri sensor spasial dan algoritma keputusan resmi inspeksi Barantin secara interaktif.
                         </p>
                     </div>
 
-                    <!-- 3 Clickable Scenarios (Simpel & Jelas) -->
+                    <!-- 3 Clickable Scenarios (SpaceX Mission Profiles) -->
                     <div class="sim-scenario-selector">
                         <button type="button" class="sim-scenario-btn active" data-scenario="normal" id="sim-btn-normal">
                             <div class="sim-btn-indicator green"></div>
                             <div class="sim-btn-info">
-                                <span class="sim-btn-title">🟢 Pelayaran Normal</span>
-                                <span class="sim-btn-desc">Suhu stabil ≤ -18°C. Langsung lolos Jalur Hijau.</span>
+                                <span class="sim-btn-badge">PROFIL 01 // NOMINAL</span>
+                                <span class="sim-btn-title">PELAYARAN NORMAL</span>
+                                <span class="sim-btn-desc">Suhu stabil &le; -18°C. Langsung lolos sertifikasi Jalur Hijau.</span>
                             </div>
                         </button>
 
                         <button type="button" class="sim-scenario-btn" data-scenario="defrost" id="sim-btn-defrost">
                             <div class="sim-btn-indicator yellow"></div>
                             <div class="sim-btn-info">
-                                <span class="sim-btn-title">🟡 Siklus Defrost</span>
-                                <span class="sim-btn-desc">Udara naik sesaat, inti tetap beku. AI cegah alarm palsu.</span>
+                                <span class="sim-btn-badge">PROFIL 02 // DEFROST CYCLE</span>
+                                <span class="sim-btn-title">SIKLUS DEFROST CERDAS</span>
+                                <span class="sim-btn-desc">Udara naik sesaat, inti tetap beku. AI cegah false alarm penolakan.</span>
                             </div>
                         </button>
 
                         <button type="button" class="sim-scenario-btn" data-scenario="critical" id="sim-btn-critical">
                             <div class="sim-btn-indicator red"></div>
                             <div class="sim-btn-info">
-                                <span class="sim-btn-title">🔴 Kompresor Rusak</span>
-                                <span class="sim-btn-desc">Suhu inti naik kritis. Wajib inspeksi dan uji lab.</span>
+                                <span class="sim-btn-badge">PROFIL 03 // COMPRESSOR FAIL</span>
+                                <span class="sim-btn-title">KOMPRESOR GAGAL DINGIN</span>
+                                <span class="sim-btn-desc">Suhu inti naik kritis. Wajib inspeksi fisik dan uji lab karantina.</span>
                             </div>
                         </button>
                     </div>
@@ -445,10 +447,10 @@
             <section class="landing-section section-journey" id="journey">
                 <div class="landing-container">
                     <div class="section-heading-center">
-                        <span class="section-tag">RUTE RANTAI DINGIN NUSANTARA</span>
-                        <h2 class="section-title">Pengawasan Maritim Bitung &rarr; Surabaya</h2>
+                        <span class="section-tag">// 03 LOGISTICS CORRIDOR</span>
+                        <h2 class="section-title">PENGAWASAN MARITIM BITUNG &rarr; SURABAYA</h2>
                         <p class="section-subtitle">
-                            Klik setiap etape untuk melihat bagaimana data kargo tetap aman dari pelabuhan asal hingga pos perbatasan.
+                            Validasi telemetri rantai dingin terpadu dari pelabuhan asal hingga pos inspeksi perbatasan karantina.
                         </p>
                     </div>
 
@@ -456,7 +458,7 @@
                     <div class="route-banner-card">
                         <img src="./assets/logistics-route.jpg" alt="Peta Rute Pelayaran Cold Chain Nusantara Bitung ke Surabaya" class="route-banner-img">
                         <div class="route-banner-overlay">
-                            <span class="route-banner-tag">KORIDOR MARITIM BITUNG &rarr; SURABAYA</span>
+                            <span class="route-banner-tag">// KORIDOR MARITIM BITUNG &rarr; SURABAYA</span>
                             <span class="route-banner-sub">Pengawasan Berkelanjutan Melintasi Blankspot Selat Makassar</span>
                         </div>
                     </div>
@@ -465,26 +467,26 @@
                     <div class="journey-stepper" id="journey-stepper">
                         <button type="button" class="journey-step-btn active" data-step="1">
                             <span class="step-num">01</span>
-                            <span class="step-title">Pelabuhan Bitung</span>
+                            <span class="step-title">PELABUHAN BITUNG</span>
                         </button>
                         <div class="journey-step-connector"></div>
                         <button type="button" class="journey-step-btn" data-step="2">
                             <span class="step-num">02</span>
-                            <span class="step-title">Selat Makassar (Offline)</span>
+                            <span class="step-title">SELAT MAKASSAR (BUFFER)</span>
                         </button>
                         <div class="journey-step-connector"></div>
                         <button type="button" class="journey-step-btn" data-step="3">
                             <span class="step-num">03</span>
-                            <span class="step-title">Truk Surabaya</span>
+                            <span class="step-title">TRANSIT SURABAYA</span>
                         </button>
                         <div class="journey-step-connector"></div>
                         <button type="button" class="journey-step-btn" data-step="4">
                             <span class="step-num">04</span>
-                            <span class="step-title">Gerbang Barantin</span>
+                            <span class="step-title">CLEARANCE BARANTIN</span>
                         </button>
                     </div>
 
-                    <!-- Dynamic Journey Stage Detail Card (Simple & Ringkas) -->
+                    <!-- Dynamic Journey Stage Detail Card (SpaceX Profile Card) -->
                     <div class="journey-detail-card" id="journey-detail-card">
                         <div class="journey-card-grid">
                             <div class="journey-card-left">
@@ -511,24 +513,24 @@
                             <div class="journey-card-right">
                                 <div class="journey-telemetry-snapshot">
                                     <div class="snapshot-header">
-                                        <span>Snapshot Telemetri Etape</span>
+                                        <span>// SNAPSHOT TELEMETRI ETAPE</span>
                                         <span class="status-indicator-safe"></span>
                                     </div>
                                     <div class="snapshot-body">
                                         <div class="snapshot-metric">
-                                            <span class="snap-lbl">T1 Inti Daging</span>
+                                            <span class="snap-lbl">// T1 INTI DAGING</span>
                                             <span class="snap-val text-primary-cyan" id="journey-snap-t1">-22.4°C</span>
                                         </div>
                                         <div class="snapshot-metric">
-                                            <span class="snap-lbl">Tengah / Es (T2)</span>
+                                            <span class="snap-lbl">// T2 TENGAH / ES</span>
                                             <span class="snap-val text-primary-blue" id="journey-snap-t2">-21.1°C</span>
                                         </div>
                                         <div class="snapshot-metric">
-                                            <span class="snap-lbl">Pintu Wadah (T3)</span>
+                                            <span class="snap-lbl">// T3 PINTU WADAH</span>
                                             <span class="snap-val text-warning" id="journey-snap-t3">-19.5°C</span>
                                         </div>
                                         <div class="snapshot-metric">
-                                            <span class="snap-lbl">Integritas Data</span>
+                                            <span class="snap-lbl">// INTEGRITAS DATA</span>
                                             <span class="snap-val text-success" id="journey-snap-data">100% Tercatat</span>
                                         </div>
                                     </div>
@@ -542,42 +544,42 @@
                 </div>
             </section>
 
-            <!-- 5. PERBANDINGAN KEUNGGULAN (SIMPLE & PUNCHY) -->
+            <!-- 5. PERBANDINGAN KEUNGGULAN (SPACEX TECHNICAL MATRIX) -->
             <section class="landing-section section-comparison">
                 <div class="landing-container">
                     <div class="section-heading-center">
-                        <span class="section-tag">KEUNGGULAN SISTEM</span>
-                        <h2 class="section-title">Mengapa Q-GUARD Lebih Unggul?</h2>
+                        <span class="section-tag">// 04 TECHNICAL MATRIX</span>
+                        <h2 class="section-title">METODE KONVENSIONAL VS PROTOKOL Q-GUARD</h2>
                         <p class="section-subtitle">
-                            Solusi modern menggantikan pencatatan suhu pasif konvensional.
+                            Standar pemantauan aktif terhubung menggantikan pencatatan pasif USB konvensional.
                         </p>
                     </div>
 
                     <div class="comparison-grid">
                         <!-- Kolom Konvensional -->
                         <div class="comparison-card conventional">
-                            <div class="comp-badge old">Metode Konvensional</div>
-                            <h3 class="comp-title">Datalogger Pasif USB</h3>
+                            <div class="comp-badge old">// LEGACY SPEC</div>
+                            <h3 class="comp-title">DATALOGGER PASIF USB</h3>
                             <ul class="comp-list">
                                 <li class="comp-item negative">
                                     <span class="comp-icon">&times;</span>
                                     <div>
-                                        <strong>1 Titik Ukur Dekat Pintu</strong>
+                                        <strong>1 TITIK UKUR DEKAT PINTU</strong>
                                         <p>Tidak mengukur suhu inti daging yang sebenarnya.</p>
                                     </div>
                                 </li>
                                 <li class="comp-item negative">
                                     <span class="comp-icon">&times;</span>
                                     <div>
-                                        <strong>Data Baru Dibaca Pasca-Tiba</strong>
-                                        <p>Kerusakan baru disadari saat barang sudah tiba rusak.</p>
+                                        <strong>DATA BARU DI-DUMP PASCA-TIBA</strong>
+                                        <p>Kerusakan baru disadari saat barang sudah tiba rusak di tujuan.</p>
                                     </div>
                                 </li>
                                 <li class="comp-item negative">
                                     <span class="comp-icon">&times;</span>
                                     <div>
-                                        <strong>Sering Alarm Palsu saat Defrost</strong>
-                                        <p>Kenaikan suhu udara wajar memicu penolakan kargo.</p>
+                                        <strong>SERING FALSE ALARM SAAT DEFROST</strong>
+                                        <p>Kenaikan suhu udara sesaat memicu penolakan kargo yang keliru.</p>
                                     </div>
                                 </li>
                             </ul>
@@ -585,28 +587,28 @@
 
                         <!-- Kolom Q-GUARD -->
                         <div class="comparison-card modern">
-                            <div class="comp-badge new">Inovasi Q-GUARD 2026</div>
-                            <h3 class="comp-title">IoT Cerdas + Multivariate AI</h3>
+                            <div class="comp-badge new">// MISSION PROTOCOL</div>
+                            <h3 class="comp-title">IOT CERDAS + MULTIVARIATE AI</h3>
                             <ul class="comp-list">
                                 <li class="comp-item positive">
                                     <span class="comp-icon">&check;</span>
                                     <div>
-                                        <strong>Susunan 3 Probe Spasial</strong>
-                                        <p>Pantau langsung inti komoditas, lapisan es, dan pintu.</p>
+                                        <strong>SUSUNAN 3 PROBE SPASIAL</strong>
+                                        <p>Pantau langsung inti komoditas, lapisan es, dan pintu secara simultan.</p>
                                     </div>
                                 </li>
                                 <li class="comp-item positive">
                                     <span class="comp-icon">&check;</span>
                                     <div>
-                                        <strong>Buffer MicroSD (0% Data Loss)</strong>
-                                        <p>Penyimpanan otomatis saat berada di laut lepas tanpa sinyal.</p>
+                                        <strong>BUFFER MICROSD (0% DATA LOSS)</strong>
+                                        <p>Penyimpanan otomatis saat berada di laut lepas tanpa sinyal seluler.</p>
                                     </div>
                                 </li>
                                 <li class="comp-item positive">
                                     <span class="comp-icon">&check;</span>
                                     <div>
-                                        <strong>Filter AI Isolation Forest</strong>
-                                        <p>Membedakan siklus defrost wajar vs kompresor rusak nyata.</p>
+                                        <strong>FILTER AI ISOLATION FOREST</strong>
+                                        <p>Membedakan siklus defrost wajar vs kompresor pendingin rusak nyata.</p>
                                     </div>
                                 </li>
                             </ul>
@@ -619,8 +621,8 @@
             <section class="landing-section section-arch" id="arsitektur">
                 <div class="landing-container">
                     <div class="section-heading-center">
-                        <span class="section-tag">ARSITEKTUR INOVASI</span>
-                        <h2 class="section-title">Empat Pilar Teknologi Q-GUARD</h2>
+                        <span class="section-tag">// 05 SYSTEM ARCHITECTURE</span>
+                        <h2 class="section-title">EMPAT PILAR TEKNOLOGI Q-GUARD</h2>
                         <p class="section-subtitle">
                             Desain berlapis dari pembacaan sensorik di boks kargo hingga inspeksi digital Barantin.
                         </p>
@@ -638,9 +640,9 @@
                                         <line x1="6" y1="18" x2="6.01" y2="18"/>
                                     </svg>
                                 </div>
-                                <h3 class="arch-title">Edge Tri-Probe Sensing</h3>
+                                <h3 class="arch-title">01 // EDGE TRI-PROBE SENSING</h3>
                                 <p class="arch-desc">
-                                    ESP32 membaca 3 sensor suhu digital DS18B20 anti-air, GPS NEO-6M, serta akselerometer MPU6050 untuk guncangan jalan.
+                                    ESP32 membaca 3 sensor suhu digital DS18B20 anti-air, GPS NEO-6M, serta akselerometer MPU6050 untuk deteksi guncangan dinamis.
                                 </p>
                             </div>
                         </div>
@@ -655,9 +657,9 @@
                                         <path d="M20.4 14.5L16 10 4 20"/>
                                     </svg>
                                 </div>
-                                <h3 class="arch-title">Offline-First MicroSD</h3>
+                                <h3 class="arch-title">02 // OFFLINE-FIRST MICROSD BUFFER</h3>
                                 <p class="arch-desc">
-                                    Penyimpanan lokal otomatis saat blankspot di laut lepas. 100% data disinkronkan kembali saat bersandar di pelabuhan.
+                                    Penyimpanan lokal otomatis saat blankspot di laut lepas. 100% data disinkronkan kembali saat bersandar di dermaga tujuan.
                                 </p>
                             </div>
                         </div>
@@ -671,7 +673,7 @@
                                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                                     </svg>
                                 </div>
-                                <h3 class="arch-title">AI & Kinetika Arrhenius</h3>
+                                <h3 class="arch-title">03 // AI ANOMALY & ARRHENIUS</h3>
                                 <p class="arch-desc">
                                     Model AI Isolation Forest membedakan fluktuasi defrost wajar, dan kinetika MKT menghitung akumulasi degradasi biokimia.
                                 </p>
@@ -688,7 +690,7 @@
                                         <line x1="12" y1="22.08" x2="12" y2="12"/>
                                     </svg>
                                 </div>
-                                <h3 class="arch-title">Quarantine Dossier &lt; 5 Mnt</h3>
+                                <h3 class="arch-title">04 // RAPID CLEARANCE &lt; 5 MNT</h3>
                                 <p class="arch-desc">
                                     Penerbitan surat disposisi Jalur Hijau resmi dan rekam jejak audit digital terenkripsi SHA-256 untuk petugas Barantin.
                                 </p>
