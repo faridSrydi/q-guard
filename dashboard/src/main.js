@@ -205,6 +205,7 @@ function isLandingHash(hash) {
 }
 
 function showLandingPage(targetSection = 'home') {
+    if (typeof stopGpsLiveTracking === 'function') stopGpsLiveTracking();
     if (elLandingPage) elLandingPage.classList.remove('hidden');
     if (el.appLayout) el.appLayout.classList.add('hidden');
     if (el.loginOverlay) el.loginOverlay.classList.add('hidden');
@@ -230,6 +231,9 @@ function showLandingPage(targetSection = 'home') {
 }
 
 function showDashboardView(viewName) {
+    if (viewName !== 'gps-track' && typeof stopGpsLiveTracking === 'function') {
+        stopGpsLiveTracking();
+    }
     if (elLandingPage) elLandingPage.classList.add('hidden');
     if (el.appLayout) el.appLayout.classList.remove('hidden');
     if (el.loginOverlay) el.loginOverlay.classList.add('hidden');
@@ -1332,8 +1336,261 @@ function showCreateShipmentModal() {
 }
 
 // -------------------------------------------------------------
-// VIEW 4: GPS VOYAGE MAP
+// VIEW 4: LIVE GPS VOYAGE & FLEET TRACKING ENGINE
 // -------------------------------------------------------------
+
+// Realistic Indonesian Cold-Chain Corridors for Live Simulation
+const SIM_TRUCK_CORRIDOR = [
+    [-6.1042, 106.8835, -19.4, 0],   // Dermaga Petikemas Tanjung Priok
+    [-6.1070, 106.8845, -19.3, 28],  // Gate Petikemas Keluar Pelabuhan
+    [-6.1115, 106.8860, -19.2, 42],  // Jl. Pelabuhan Raya
+    [-6.1180, 106.8885, -19.1, 48],  // Ramp Tol Akses Priok
+    [-6.1265, 106.8920, -19.0, 56],  // Tol Akses Priok KM 02
+    [-6.1360, 106.8970, -18.9, 62],  // Simpang Susun Rorotan
+    [-6.1480, 106.9040, -18.8, 64],  // JORR KM 56
+    [-6.1620, 106.9150, -18.8, 65],  // Cakung Cilincing
+    [-6.1790, 106.9320, -18.7, 68],  // Pulogebang Junction
+    [-6.2050, 106.9580, -18.7, 72],  // Tol Jakarta - Cikampek KM 10
+    [-6.2230, 106.9850, -18.6, 75],  // Cikunir Interchange
+    [-6.2390, 107.0120, -18.5, 78],  // Bekasi Barat
+    [-6.2510, 107.0420, -18.5, 75],  // Bekasi Timur
+    [-6.2680, 107.0850, -18.4, 72],  // Tambun KM 21
+    [-6.2840, 107.1120, -18.3, 65],  // Cibitung KM 25
+    [-6.3020, 107.1080, -18.3, 45],  // Gerbang Tol Cikarang Barat (MM2100)
+    [-6.3120, 107.1020, -18.4, 30],  // Kawasan Industri MM2100
+    [-6.3190, 107.0980, -18.5, 15]   // Central Cold Storage Barantin Cikarang
+];
+
+const SIM_SHIP_CORRIDOR = [
+    [-7.1950, 112.7300, -20.2, 0],   // Dermaga Gapura Surya Nusantara Tanjung Perak
+    [-7.1820, 112.7320, -20.1, 8],   // Alur Barat Pelayaran
+    [-7.1650, 112.7350, -20.0, 12],  // Karang Jamuang Selatan
+    [-7.1420, 112.7410, -19.9, 14],  // Selat Madura Sisi Barat
+    [-7.1100, 112.7520, -19.8, 16],  // Pos Pandu Karang Jamuang
+    [-7.0750, 112.7680, -19.7, 18],  // Lepas Selat Madura Utara
+    [-7.0300, 112.7900, -19.6, 20],  // Masuk Alur Laut Jawa
+    [-6.9800, 112.8200, -19.5, 22],  // Laut Jawa Timur
+    [-6.9200, 112.8600, -19.4, 22],  // Menuju Selat Makassar
+    [-6.8500, 112.9100, -19.3, 22]   // Perairan Terbuka Rute Makassar
+];
+
+// Live GPS Tracking State Object
+const gpsLive = {
+    pollingTimer: null,
+    simTimer: null,
+    animRafId: null,
+    vehicleType: localStorage.getItem('qguard_vehicle_type') || 'truck', // 'truck' | 'ship' | 'beacon'
+    autoFollow: true,
+    isSimulating: false,
+    simIndex: 0,
+    currentPos: null,       // [lat, lon]
+    currentHeading: 0,      // deg 0-360
+    speedKmh: 0,
+    lastReadingId: null,
+    marker: null,
+    polyline: null,
+    streetLayer: null,
+    satelliteLayer: null,
+    currentTileMode: 'street',
+    rawGpsPoints: [],
+    activeShipment: null
+};
+
+// Bearing & Heading Calculator (Spherical Trigonometry)
+function calculateGpsBearing(lat1, lon1, lat2, lon2) {
+    const toRad = Math.PI / 180;
+    const toDeg = 180 / Math.PI;
+    const dLon = (lon2 - lon1) * toRad;
+    const phi1 = lat1 * toRad;
+    const phi2 = lat2 * toRad;
+    const y = Math.sin(dLon) * Math.cos(phi2);
+    const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLon);
+    let brng = Math.atan2(y, x) * toDeg;
+    return (brng + 360) % 360;
+}
+
+function calculateGpsSpeedKmh(lat1, lon1, lat2, lon2, timeDeltaSec = 3.5) {
+    const R = 6371; // km
+    const toRad = Math.PI / 180;
+    const dLat = (lat2 - lat1) * toRad;
+    const dLon = (lon2 - lon1) * toRad;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distKm = R * c;
+    const hours = (timeDeltaSec || 3.5) / 3600;
+    return Math.max(0, Math.min(130, distKm / hours));
+}
+
+function getCompassHeadingName(deg) {
+    const directions = ['Utara (N)', 'Timur Laut (NE)', 'Timur (E)', 'Tenggara (SE)', 'Selatan (S)', 'Barat Daya (SW)', 'Barat (W)', 'Barat Laut (NW)'];
+    const idx = Math.round(((deg % 360) / 45)) % 8;
+    return directions[idx];
+}
+
+// Generate High-Definition Vector SVG for Vehicles
+function buildVehicleMarkerHtml() {
+    const heading = Math.round(gpsLive.currentHeading || 0);
+    const type = gpsLive.vehicleType;
+    let label = 'TRUK REEFER';
+    let innerSvg = '';
+
+    if (type === 'ship') {
+        label = 'KAPAL KARGO';
+        innerSvg = `
+            <div class="vehicle-rotator" style="transform: rotate(${heading}deg);">
+                <div class="vehicle-radar-ripple"></div>
+                <svg class="vehicle-svg-asset" width="38" height="66" viewBox="0 0 38 66" fill="none">
+                    <path d="M19 2C24 9 34 22 34 46C34 58 30 62 19 63C8 62 4 58 4 46C4 22 14 9 19 2Z" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+                    <path d="M19 5C22 11 31 22 31 44C31 54 28 58 19 59C10 58 7 54 7 44C7 22 16 11 19 5Z" fill="#0f172a"/>
+                    <polygon points="19,4 17,9 21,9" fill="#38bdf8"/>
+                    <rect x="10" y="16" width="8" height="12" rx="1" fill="#0284c7" stroke="#38bdf8" stroke-width="0.75"/>
+                    <rect x="20" y="16" width="8" height="12" rx="1" fill="#059669" stroke="#34d399" stroke-width="0.75"/>
+                    <rect x="10" y="30" width="8" height="12" rx="1" fill="#d97706" stroke="#fbbf24" stroke-width="0.75"/>
+                    <rect x="20" y="30" width="8" height="12" rx="1" fill="#0284c7" stroke="#38bdf8" stroke-width="0.75"/>
+                    <rect x="12" y="44" width="14" height="9" rx="2" fill="#334155" stroke="#94a3b8" stroke-width="1"/>
+                    <circle cx="19" cy="48.5" r="2" fill="#38bdf8"/>
+                    <line x1="19" y1="46" x2="19" y2="44" stroke="#e0f2fe" stroke-width="1.5"/>
+                    <circle cx="7" cy="56" r="1.5" fill="#ef4444"/>
+                    <circle cx="31" cy="56" r="1.5" fill="#10b981"/>
+                </svg>
+            </div>
+            <div class="vehicle-floating-tag" id="vehicle-marker-tag">${label}</div>
+        `;
+    } else if (type === 'beacon') {
+        label = 'SMART BEACON';
+        innerSvg = `
+            <div class="vehicle-rotator">
+                <div class="vehicle-radar-ripple"></div>
+                <svg class="vehicle-svg-asset" width="46" height="46" viewBox="0 0 46 46" fill="none">
+                    <circle cx="23" cy="23" r="18" fill="rgba(2, 132, 199, 0.22)" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3 3"/>
+                    <circle cx="23" cy="23" r="10" fill="#0284c7" stroke="#ffffff" stroke-width="2"/>
+                    <circle cx="23" cy="23" r="4" fill="#ffffff"/>
+                    <line x1="23" y1="2" x2="23" y2="8" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="23" y1="38" x2="23" y2="44" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="2" y1="23" x2="8" y2="23" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="38" y1="23" x2="44" y2="23" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div class="vehicle-floating-tag" id="vehicle-marker-tag">${label}</div>
+        `;
+    } else {
+        label = 'TRUK REEFER';
+        innerSvg = `
+            <div class="vehicle-rotator" style="transform: rotate(${heading}deg);">
+                <div class="vehicle-radar-ripple"></div>
+                <svg class="vehicle-svg-asset" width="38" height="62" viewBox="0 0 38 62" fill="none">
+                    <rect x="2" y="14" width="4" height="2" rx="1" fill="#64748b"/>
+                    <rect x="32" y="14" width="4" height="2" rx="1" fill="#64748b"/>
+                    <path d="M8 9C8 5.5 10.5 3 14 3H24C27.5 3 30 5.5 30 9V20H8V9Z" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+                    <path d="M10 8C10 6 12 5 15 5H23C26 5 28 6 28 8V13H10V8Z" fill="#0284c7" fill-opacity="0.85"/>
+                    <rect x="9" y="3.5" width="4" height="2" rx="1" fill="#fef08a"/>
+                    <rect x="25" y="3.5" width="4" height="2" rx="1" fill="#fef08a"/>
+                    <rect x="13" y="16" width="12" height="4" rx="1" fill="#38bdf8"/>
+                    <rect x="6" y="21" width="26" height="38" rx="2.5" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+                    <rect x="8" y="23" width="22" height="34" rx="1.5" fill="#1e293b"/>
+                    <line x1="10" y1="28" x2="28" y2="28" stroke="#334155" stroke-width="1.2"/>
+                    <line x1="10" y1="33" x2="28" y2="33" stroke="#334155" stroke-width="1.2"/>
+                    <line x1="10" y1="38" x2="28" y2="38" stroke="#334155" stroke-width="1.2"/>
+                    <line x1="10" y1="43" x2="28" y2="43" stroke="#334155" stroke-width="1.2"/>
+                    <line x1="10" y1="48" x2="28" y2="48" stroke="#334155" stroke-width="1.2"/>
+                    <circle cx="19" cy="38" r="5" fill="rgba(2, 132, 199, 0.25)" stroke="#38bdf8" stroke-width="1"/>
+                    <line x1="19" y1="34" x2="19" y2="42" stroke="#38bdf8" stroke-width="1.2"/>
+                    <line x1="15" y1="38" x2="23" y2="38" stroke="#38bdf8" stroke-width="1.2"/>
+                    <rect x="8" y="58" width="4" height="1.5" fill="#ef4444"/>
+                    <rect x="26" y="58" width="4" height="1.5" fill="#ef4444"/>
+                </svg>
+            </div>
+            <div class="vehicle-floating-tag" id="vehicle-marker-tag">${label}</div>
+        `;
+    }
+
+    return innerSvg;
+}
+
+function updateVehicleMarkerIcon() {
+    if (!gpsLive.marker) return;
+    const html = buildVehicleMarkerHtml();
+    const icon = L.divIcon({
+        className: 'vehicle-marker-container',
+        html: html,
+        iconSize: [46, 68],
+        iconAnchor: [23, 34],
+        popupAnchor: [0, -36]
+    });
+    gpsLive.marker.setIcon(icon);
+}
+
+// Smooth Glide Animation Engine (Ala Ojek Online / Ride-Hailing)
+function smoothGlideVehicle(targetLat, targetLon, targetHeading = null, durationMs = 2400) {
+    if (!gpsLive.marker || !state.map) return;
+    if (!gpsLive.currentPos) {
+        gpsLive.currentPos = [targetLat, targetLon];
+        gpsLive.marker.setLatLng([targetLat, targetLon]);
+        return;
+    }
+
+    const startLat = gpsLive.currentPos[0];
+    const startLon = gpsLive.currentPos[1];
+
+    if (Math.abs(startLat - targetLat) < 0.000005 && Math.abs(startLon - targetLon) < 0.000005) {
+        return;
+    }
+
+    const computedHeading = targetHeading !== null 
+        ? targetHeading 
+        : calculateGpsBearing(startLat, startLon, targetLat, targetLon);
+
+    const startHeading = gpsLive.currentHeading || 0;
+    let deltaAngle = (computedHeading - startHeading + 180) % 360 - 180;
+    if (deltaAngle < -180) deltaAngle += 360;
+    const endHeading = startHeading + deltaAngle;
+
+    if (gpsLive.animRafId) {
+        cancelAnimationFrame(gpsLive.animRafId);
+        gpsLive.animRafId = null;
+    }
+
+    const startTime = performance.now();
+
+    function frame(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / durationMs, 1);
+        // Smooth Cubic Easing
+        const ease = 1 - Math.pow(1 - progress, 3);
+
+        const curLat = startLat + (targetLat - startLat) * ease;
+        const curLon = startLon + (targetLon - startLon) * ease;
+        const curHeading = (startHeading + (endHeading - startHeading) * ease + 360) % 360;
+
+        gpsLive.currentPos = [curLat, curLon];
+        gpsLive.currentHeading = curHeading;
+
+        gpsLive.marker.setLatLng([curLat, curLon]);
+
+        const rotator = document.querySelector('.vehicle-rotator');
+        if (rotator && gpsLive.vehicleType !== 'beacon') {
+            rotator.style.transform = `rotate(${curHeading}deg)`;
+        }
+
+        if (gpsLive.autoFollow && state.map) {
+            state.map.panTo([curLat, curLon], { animate: false });
+        }
+
+        if (progress < 1) {
+            gpsLive.animRafId = requestAnimationFrame(frame);
+        } else {
+            gpsLive.animRafId = null;
+            if (gpsLive.polyline) {
+                gpsLive.polyline.addLatLng([targetLat, targetLon]);
+            }
+        }
+    }
+
+    gpsLive.animRafId = requestAnimationFrame(frame);
+}
+
+// Main View Renderer for GPS Voyage Map
 async function renderGpsView() {
     el.contentBody.innerHTML = `<div class="loading-state">Memuat data posisi & rute GPS pelayaran armada...</div>`;
     
@@ -1348,22 +1605,33 @@ async function renderGpsView() {
             ? shipments.find(s => s.id === state.selectedShipmentId)
             : shipments.find(s => s.device_id === state.selectedDeviceId && s.status === 'active') || shipments.find(s => s.device_id === state.selectedDeviceId) || shipments[0] || null;
 
-        // Ambil riwayat bacaan berdasarkan kargo terpilih (jika ada) atau perangkat
+        gpsLive.activeShipment = activeShipment;
+
+        // Auto-detect recommended vehicle type if shipment commodity indicates ship vs truck
+        if (!localStorage.getItem('qguard_vehicle_type')) {
+            if (activeShipment?.destination && (activeShipment.destination.toLowerCase().includes('makassar') || activeShipment.destination.toLowerCase().includes('pelabuhan'))) {
+                gpsLive.vehicleType = 'ship';
+            } else {
+                gpsLive.vehicleType = 'truck';
+            }
+        }
+
         const historyQuery = activeShipment 
             ? { shipment_id: activeShipment.id, limit: 200 }
             : { device_id: state.selectedDeviceId, limit: 200 };
             
         const historyRes = await api.getHistory(historyQuery).catch(() => ({ readings: [] }));
-
         const latest = latestRes?.reading || null;
         const allReadings = historyRes?.readings || [];
 
-        // Filter data koordinat GPS yang valid murni (bukan null dan bukan 0.0000)
+        // Filter valid GPS coordinates
         const validGpsReadings = allReadings.filter(r => 
             r.latitude !== null && r.longitude !== null &&
             !isNaN(Number(r.latitude)) && !isNaN(Number(r.longitude)) &&
             (Math.abs(Number(r.latitude)) > 0.0001 || Math.abs(Number(r.longitude)) > 0.0001)
-        ).reverse(); // Urutkan kronologis dari awal perjalanan ke posisi terkini
+        ).reverse();
+
+        gpsLive.rawGpsPoints = validGpsReadings;
 
         const hasRealGps = validGpsReadings.length > 0;
         const latestLat = latest && latest.latitude && Math.abs(Number(latest.latitude)) > 0.0001 ? Number(latest.latitude) : null;
@@ -1372,7 +1640,7 @@ async function renderGpsView() {
 
         const isFix3D = (latest?.gps_fix_status === 'FIX_3D' || latest?.gps_fix_status === '3D_FIX');
         const fixBadgeText = isFix3D 
-            ? '● 3D Fix' 
+            ? '● 3D Fix (Akurat)' 
             : (hasLiveFix ? '● 2D Fix' : '○ Mencari Satelit');
         const fixBadgeClass = (isFix3D || hasLiveFix) ? 'var(--status-normal)' : '#f59e0b';
 
@@ -1394,20 +1662,46 @@ async function renderGpsView() {
             <div class="panel">
                 <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
                     <div>
-                        <h2 class="panel-title">${icons.map} Peta Pelacakan Rute & Posisi GPS</h2>
+                        <h2 class="panel-title">${icons.map} Peta Pelacakan Rute & Posisi GPS Live</h2>
                         <span style="font-size: 12px; color: var(--text-muted)">
-                            ${hasRealGps ? 'Data Pelayaran Real-Time dari Perangkat ' + state.selectedDeviceId : 'Menunggu Koordinat Satelit GPS dari Unit ' + state.selectedDeviceId}
+                            ${hasRealGps ? 'Pelacakan Kontinu Armada Real-Time Tanpa Refresh • Unit ' + state.selectedDeviceId : 'Menunggu Koordinat Satelit GPS dari Unit ' + state.selectedDeviceId}
                         </span>
                     </div>
+
+                    <!-- Toolbar Kontrol Peta & Ikon Kendaraan -->
                     <div class="panel-actions" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                        <!-- Pemilih Ikon Kendaraan -->
+                        <div class="vehicle-selector-group" title="Pilih bentuk representasi armada">
+                            <button class="vehicle-btn ${gpsLive.vehicleType === 'truck' ? 'active' : ''}" data-vehicle="truck">
+                                ${icons.truck} Truk Reefer
+                            </button>
+                            <button class="vehicle-btn ${gpsLive.vehicleType === 'ship' ? 'active' : ''}" data-vehicle="ship">
+                                ${icons.ship} Kapal Kargo
+                            </button>
+                            <button class="vehicle-btn ${gpsLive.vehicleType === 'beacon' ? 'active' : ''}" data-vehicle="beacon">
+                                ${icons.mapPin} Pin Beacon
+                            </button>
+                        </div>
+
+                        <!-- Filter Kargo -->
                         <div style="display: flex; align-items: center; gap: 6px;">
-                            <label style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Kargo:</label>
                             <select id="gps-shipment-select" class="form-control" style="padding: 4px 8px; font-size: 12px; height: 32px;">
                                 <option value="" ${!state.selectedShipmentId ? 'selected' : ''}>Semua Data Unit (${state.selectedDeviceId})</option>
                                 ${shipments.map(s => `<option value="${s.id}" ${state.selectedShipmentId === s.id ? 'selected' : ''}>${s.id} - ${formatCommodityName(s.commodity)}</option>`).join('')}
                             </select>
                         </div>
-                        <button class="btn btn-secondary btn-sm" id="btn-recenter-map" title="Pusatkan kamera ke lokasi alat saat ini">
+
+                        <!-- Auto-Follow Camera Toggle -->
+                        <button class="btn btn-secondary btn-sm ${gpsLive.autoFollow ? 'btn-primary' : ''}" id="btn-toggle-autofollow" title="Kamera otomatis mengikuti posisi armada layaknya aplikasi ride-hailing">
+                            ${icons.compass} <span id="autofollow-text">${gpsLive.autoFollow ? 'Ikuti: ON' : 'Ikuti: OFF'}</span>
+                        </button>
+
+                        <!-- Live Demo Simulation Toggle -->
+                        <button class="btn btn-secondary btn-sm" id="btn-toggle-simulation" title="Uji animasi pergerakan mulus ala Gojek/Grab secara langsung" style="border-color: #f59e0b; color: #b45309; font-weight: 600;">
+                            <span id="sim-icon">🚀</span> <span id="sim-text">Live Demo Gerak</span>
+                        </button>
+
+                        <button class="btn btn-secondary btn-sm" id="btn-recenter-map" title="Pusatkan kamera ke lokasi armada saat ini">
                             ${icons.gps} Pusatkan
                         </button>
                         <button class="btn btn-secondary btn-sm" id="btn-fit-route" title="Lihat seluruh jalur rute pengiriman">
@@ -1433,19 +1727,37 @@ async function renderGpsView() {
                         </div>
                     </div>
                 ` : ''}
-                
-                ${!hasRealGps ? `
-                    <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid #f59e0b; padding: 12px 16px; border-radius: var(--radius-sm); margin-bottom: 12px; font-size: 12px; color: #b45309; display: flex; align-items: center; gap: 12px;">
-                        <span style="font-size: 24px;">🛰️</span>
-                        <div>
-                            <strong style="font-size: 13px;">Modul GPS Sedang Mencari Satelit (NO FIX / Di Dalam Ruangan)</strong><br>
-                            GPS NEO-6M memerlukan pandangan langsung ke langit terbuka (outdoor / dekat jendela) untuk mengunci koordinat bujur & lintang. Peta di bawah siap memetakan koordinat riil seketika sinyal satelit terkunci, tanpa data simulasi palsu.
+
+                <!-- Map Canvas & Floating HUD -->
+                <div class="map-stage-wrapper">
+                    <div id="map"></div>
+
+                    <!-- Floating Glassmorphic Telemetry HUD Overlay -->
+                    <div class="map-hud-overlay">
+                        <div class="map-hud-left">
+                            <div class="map-hud-pill ${hasLiveFix ? 'live-active' : ''}" id="map-live-pill">
+                                <span class="map-live-dot" id="map-live-dot"></span>
+                                <span id="map-live-title">${hasLiveFix ? 'LIVE GPS ACTIVE' : 'GPS STANDBY (MENUNGGU FIX)'}</span>
+                            </div>
+                            <div class="map-hud-chip">
+                                KECEPATAN: <strong id="hud-speed-val">0.0 km/h</strong>
+                            </div>
+                            <div class="map-hud-chip">
+                                HALUAN: <strong id="hud-heading-val">000° (Utara)</strong>
+                            </div>
+                        </div>
+                        <div class="map-hud-right">
+                            <div class="map-hud-chip">
+                                SUHU INTI: <strong id="hud-temp-val" style="color: #10b981;">${tempVal}</strong>
+                            </div>
+                            <div class="map-hud-chip" id="hud-mode-chip">
+                                MODA: <strong id="hud-mode-val">${gpsLive.vehicleType === 'ship' ? 'KAPAL KARGO' : (gpsLive.vehicleType === 'beacon' ? 'BEACON' : 'TRUK REEFER')}</strong>
+                            </div>
                         </div>
                     </div>
-                ` : ''}
+                </div>
 
-                <div id="map" class="map-container"></div>
-                
+                <!-- Detail Telemetri Statistik Bar Bawah -->
                 <div style="margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: var(--bg-surface-elevated); padding: 14px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 13px;">
                     <div>
                         <span style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 2px;">KOORDINAT TERKINI</span>
@@ -1468,18 +1780,55 @@ async function renderGpsView() {
                 <div style="margin-top: 12px; display: flex; gap: 20px; font-size: 12px; color: var(--text-secondary); align-items: center; flex-wrap: wrap;">
                     <div><span style="color: #10b981; font-size: 16px;">●</span> Normal (Sesuai Batas Regulasi)</div>
                     <div><span style="color: #ef4444; font-size: 16px;">●</span> Melebihi Batas / Excursion</div>
-                    <div style="display: inline-flex; align-items: center; gap: 4px;"><span style="color: var(--primary-blue); display: inline-flex;">${icons.mapPin}</span> Posisi Terkini Q-GUARD</div>
+                    <div style="display: inline-flex; align-items: center; gap: 4px;"><span style="color: var(--primary-blue); display: inline-flex;">${icons.mapPin}</span> Posisi Terkini Q-GUARD (Live Interpolated)</div>
+                    <div style="margin-left: auto; color: var(--text-muted); font-size: 11px;">Sinkronisasi Realtime Otomatis Tiap 3.5 Detik Tanpa Refresh</div>
                 </div>
             </div>
         `;
 
+        // Pasang Event Listener Kargo Selector
         document.getElementById('gps-shipment-select')?.addEventListener('change', (e) => {
             state.selectedShipmentId = e.target.value || null;
             renderGpsView();
         });
 
+        // Pasang Event Listener Vehicle Selector
+        document.querySelectorAll('.vehicle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.vehicle-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const vType = btn.dataset.vehicle;
+                gpsLive.vehicleType = vType;
+                localStorage.setItem('qguard_vehicle_type', vType);
+                updateVehicleMarkerIcon();
+                const hudModeVal = document.getElementById('hud-mode-val');
+                if (hudModeVal) {
+                    hudModeVal.innerText = vType === 'ship' ? 'KAPAL KARGO' : (vType === 'beacon' ? 'BEACON' : 'TRUK REEFER');
+                }
+                showToast(`Ikon kendaraan diubah ke: ${vType === 'ship' ? 'Kapal Kargo' : (vType === 'beacon' ? 'Pin Beacon' : 'Truk Reefer')}`, 'info');
+            });
+        });
+
+        // Pasang Event Listener Auto-Follow
+        const btnAutoFollow = document.getElementById('btn-toggle-autofollow');
+        const autoFollowText = document.getElementById('autofollow-text');
+        btnAutoFollow?.addEventListener('click', () => {
+            gpsLive.autoFollow = !gpsLive.autoFollow;
+            btnAutoFollow.classList.toggle('btn-primary', gpsLive.autoFollow);
+            if (autoFollowText) autoFollowText.innerText = gpsLive.autoFollow ? 'Ikuti: ON' : 'Ikuti: OFF';
+            showToast(`Mode kamera ikuti kendaraan: ${gpsLive.autoFollow ? 'AKTIF' : 'NONAKTIF'}`, 'info');
+        });
+
+        // Pasang Event Listener Live Demo Simulation
+        const btnSim = document.getElementById('btn-toggle-simulation');
+        btnSim?.addEventListener('click', () => {
+            toggleGpsSimulation();
+        });
+
+        // Inisialisasi Peta Leaflet
         setTimeout(() => {
             initLeafletMap(validGpsReadings, latest);
+            startGpsLiveTracking();
         }, 100);
 
     } catch (err) {
@@ -1487,6 +1836,7 @@ async function renderGpsView() {
     }
 }
 
+// Inisialisasi Peta Leaflet dengan Marker Mulus & Polylines
 function initLeafletMap(validReadings = [], latest = null) {
     const mapEl = document.getElementById('map');
     if (!mapEl) return;
@@ -1508,55 +1858,53 @@ function initLeafletMap(validReadings = [], latest = null) {
         ]);
     }
 
-    // Koordinat pusat peta: lokasi riil terakhir atau pusat pelabuhan Nusantara
-    const centerLat = isRealData ? routePoints[routePoints.length - 1][0] : -6.1050;
-    const centerLon = isRealData ? routePoints[routePoints.length - 1][1] : 106.8850;
+    // Koordinat pusat peta awal: lokasi riil terakhir atau Pelabuhan Tanjung Priok
+    const centerLat = isRealData ? routePoints[routePoints.length - 1][0] : -6.1042;
+    const centerLon = isRealData ? routePoints[routePoints.length - 1][1] : 106.8835;
 
     const map = L.map('map', {
         zoomControl: true
-    }).setView([centerLat, centerLon], isRealData ? 15 : 12);
+    }).setView([centerLat, centerLon], isRealData ? 15 : 13);
     state.map = map;
 
-    // Tile Layer: OpenStreetMap (Jalanan) & Esri World Imagery (Satelit)
+    // Tile Layer: OpenStreetMap & Esri World Imagery Satelit
     const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19
     });
 
     const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
+        attribution: 'Tiles &copy; Esri &mdash; Maxar, Earthstar Geographics',
         maxZoom: 18
     });
 
-    // Default layer: Street
     streetLayer.addTo(map);
-    let currentTileMode = 'street';
+    gpsLive.streetLayer = streetLayer;
+    gpsLive.satelliteLayer = satelliteLayer;
+    gpsLive.currentTileMode = 'street';
 
-    let polyline = null;
-    let headMarker = null;
+    // Buat Polyline Jejak Rute
+    let latlngs = isRealData ? routePoints.map(p => [p[0], p[1]]) : [];
+    const polyline = L.polyline(latlngs, {
+        color: '#0284c7',
+        weight: 4.5,
+        opacity: 0.85,
+        lineCap: 'round',
+        lineJoin: 'round'
+    }).addTo(map);
+    gpsLive.polyline = polyline;
 
+    // Tambah markers titik riil di sepanjang jalur riil
     if (isRealData) {
-        const latlngs = routePoints.map(p => [p[0], p[1]]);
-
-        // Draw Polyline dari titik-titik riil GPS
-        polyline = L.polyline(latlngs, {
-            color: '#0284c7',
-            weight: 4,
-            opacity: 0.85,
-            lineCap: 'round',
-            lineJoin: 'round'
-        }).addTo(map);
-
-        // Tambah markers sepanjang jalur
         routePoints.forEach((p, idx) => {
             const temp = p[2];
             const isExcursion = (temp !== null && temp > -18.0);
             const color = isExcursion ? '#ef4444' : '#10b981';
             const marker = L.circleMarker([p[0], p[1]], {
-                radius: isExcursion ? 8 : 5,
+                radius: isExcursion ? 7 : 4,
                 fillColor: color,
-                color: '#fff',
-                weight: 2,
+                color: '#ffffff',
+                weight: 1.5,
                 opacity: 1,
                 fillOpacity: 0.95
             }).addTo(map);
@@ -1572,90 +1920,248 @@ function initLeafletMap(validReadings = [], latest = null) {
             `);
         });
 
-        // Current head marker pada posisi koordinat riil terakhir
-        const last = routePoints[routePoints.length - 1];
-        headMarker = L.marker([last[0], last[1]]).addTo(map)
-            .bindPopup(`
-                <div style="color: #111; font-family: Inter, sans-serif; font-size: 12px; line-height: 1.5;">
-                    <strong style="color: #0284c7;">Unit ${state.selectedDeviceId}</strong><br>
-                    Status: <strong>POSISI TERKINI (LIVE GPS)</strong><br>
-                    Suhu: <strong>${last[2] !== null ? last[2].toFixed(1) + '°C' : '--'}</strong><br>
-                    Koordinat: ${last[0].toFixed(5)}, ${last[1].toFixed(5)}
-                </div>
-            `)
-            .openPopup();
-
-        if (latlngs.length > 1) {
-            map.fitBounds(polyline.getBounds(), { padding: [40, 40], maxZoom: 16 });
+        // Hitung sudut awal kendaraan jika memiliki > 1 titik
+        if (routePoints.length >= 2) {
+            const pPrev = routePoints[routePoints.length - 2];
+            const pLast = routePoints[routePoints.length - 1];
+            gpsLive.currentHeading = calculateGpsBearing(pPrev[0], pPrev[1], pLast[0], pLast[1]);
         }
-    } else {
-        // Tampilan siaga saat menunggu GPS mengunci satelit (tanpa rute dummy palsu)
-        const idleMarker = L.circleMarker([centerLat, centerLon], {
-            radius: 9,
-            fillColor: '#f59e0b',
-            color: '#fff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.8
-        }).addTo(map);
+    }
 
-        idleMarker.bindPopup(`
-            <div style="color: #111; font-family: Inter, sans-serif; font-size: 12px; line-height: 1.5;">
-                <strong style="color: #b45309;">Area Monitoring Armada</strong><br>
-                Status: <strong>Menunggu Sinyal Satelit GPS (NO FIX)</strong><br>
-                Bawa alat ke ruang terbuka untuk mengunci rute pelayaran.
+    // Pasang Vehicle Moving Marker di Posisi Terkini
+    const initialPos = isRealData ? [routePoints[routePoints.length - 1][0], routePoints[routePoints.length - 1][1]] : [centerLat, centerLon];
+    gpsLive.currentPos = initialPos;
+
+    const initialIconHtml = buildVehicleMarkerHtml();
+    const vehicleIcon = L.divIcon({
+        className: 'vehicle-marker-container',
+        html: initialIconHtml,
+        iconSize: [46, 68],
+        iconAnchor: [23, 34],
+        popupAnchor: [0, -36]
+    });
+
+    const vehicleMarker = L.marker(initialPos, {
+        icon: vehicleIcon,
+        zIndexOffset: 1000
+    }).addTo(map);
+
+    vehicleMarker.bindPopup(`
+        <div style="color: #111; font-family: Inter, sans-serif; font-size: 12px; line-height: 1.5; min-width: 170px;">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <span style="color: #0284c7; font-weight: 800;">${icons.shield} Q-GUARD LIVE</span>
+                <span class="status-pill NORMAL" style="font-size: 10px; padding: 2px 6px;">ONLINE</span>
             </div>
-        `);
+            <strong>Unit:</strong> ${state.selectedDeviceId}<br>
+            <strong>Status:</strong> LIVE MOVING GPS<br>
+            <strong>Kecepatan:</strong> <span id="popup-speed">0.0 km/h</span><br>
+            <strong>Arah Haluan:</strong> <span id="popup-heading">000°</span><br>
+            <strong>Koordinat:</strong> <span id="popup-coords">${initialPos[0].toFixed(5)}, ${initialPos[1].toFixed(5)}</span>
+        </div>
+    `);
+
+    gpsLive.marker = vehicleMarker;
+
+    if (isRealData && latlngs.length > 1) {
+        map.fitBounds(polyline.getBounds(), { padding: [50, 50], maxZoom: 16 });
     }
 
-    // Tool 1: Pusatkan ke Lokasi Alat Terkini
-    const btnRecenter = document.getElementById('btn-recenter-map');
-    if (btnRecenter) {
-        btnRecenter.addEventListener('click', () => {
-            if (isRealData && routePoints.length > 0) {
-                const last = routePoints[routePoints.length - 1];
-                map.flyTo([last[0], last[1]], 16, { animate: true, duration: 1 });
-                if (headMarker) headMarker.openPopup();
-                showToast('Kamera dipusatkan ke posisi alat terkini', 'info');
-            } else {
-                map.flyTo([centerLat, centerLon], 13, { animate: true, duration: 1 });
-                showToast('Peta dipusatkan ke area pelabuhan', 'info');
-            }
-        });
-    }
+    // Pasang Map Controls
+    document.getElementById('btn-recenter-map')?.addEventListener('click', () => {
+        if (gpsLive.currentPos) {
+            map.flyTo(gpsLive.currentPos, 16, { animate: true, duration: 1 });
+            if (gpsLive.marker) gpsLive.marker.openPopup();
+            showToast('Kamera dipusatkan ke posisi armada terkini', 'info');
+        }
+    });
 
-    // Tool 2: Lihat Seluruh Rute
-    const btnFit = document.getElementById('btn-fit-route');
-    if (btnFit) {
-        btnFit.addEventListener('click', () => {
-            if (isRealData && polyline) {
-                map.fitBounds(polyline.getBounds(), { padding: [50, 50], animate: true });
-                showToast('Menampilkan seluruh rute kargo', 'info');
-            } else {
-                showToast('Belum ada jalur rute GPS riil untuk ditampilkan', 'info');
-            }
-        });
-    }
+    document.getElementById('btn-fit-route')?.addEventListener('click', () => {
+        if (gpsLive.polyline && gpsLive.polyline.getLatLngs().length > 0) {
+            map.fitBounds(gpsLive.polyline.getBounds(), { padding: [50, 50], animate: true });
+            showToast('Menampilkan seluruh lintasan rute', 'info');
+        } else {
+            showToast('Belum ada lintasan rute untuk ditampilkan', 'info');
+        }
+    });
 
-    // Tool 3: Ganti Mode Peta (Street vs Satellite)
     const btnToggleTiles = document.getElementById('btn-toggle-tiles');
     const labelTiles = document.getElementById('layer-type-label');
-    if (btnToggleTiles) {
-        btnToggleTiles.addEventListener('click', () => {
-            if (currentTileMode === 'street') {
-                map.removeLayer(streetLayer);
-                satelliteLayer.addTo(map);
-                currentTileMode = 'satellite';
-                if (labelTiles) labelTiles.innerText = 'Peta Jalan';
-                showToast('Tipe peta diubah ke Citra Satelit', 'info');
-            } else {
-                map.removeLayer(satelliteLayer);
-                streetLayer.addTo(map);
-                currentTileMode = 'street';
-                if (labelTiles) labelTiles.innerText = 'Peta Satelit';
-                showToast('Tipe peta diubah ke Peta Jalan', 'info');
+    btnToggleTiles?.addEventListener('click', () => {
+        if (gpsLive.currentTileMode === 'street') {
+            map.removeLayer(streetLayer);
+            satelliteLayer.addTo(map);
+            gpsLive.currentTileMode = 'satellite';
+            if (labelTiles) labelTiles.innerText = 'Peta Jalan';
+            showToast('Tipe peta diubah ke Citra Satelit', 'info');
+        } else {
+            map.removeLayer(satelliteLayer);
+            streetLayer.addTo(map);
+            gpsLive.currentTileMode = 'street';
+            if (labelTiles) labelTiles.innerText = 'Peta Satelit';
+            showToast('Tipe peta diubah ke Peta Jalan', 'info');
+        }
+    });
+}
+
+// Update HUD & Stats Elements Secara Realtime Tanpa Refresh
+function updateGpsHudRealtime(lat, lon, speed, heading, temp, fixStatus) {
+    const hudSpeed = document.getElementById('hud-speed-val');
+    const hudHeading = document.getElementById('hud-heading-val');
+    const hudTemp = document.getElementById('hud-temp-val');
+    const statCoords = document.getElementById('gps-stat-coords');
+    const statStatus = document.getElementById('gps-stat-status');
+    const statTemp = document.getElementById('gps-stat-temp');
+    const popupSpeed = document.getElementById('popup-speed');
+    const popupHeading = document.getElementById('popup-heading');
+    const popupCoords = document.getElementById('popup-coords');
+
+    const headingName = getCompassHeadingName(heading);
+
+    if (hudSpeed) hudSpeed.innerText = `${speed.toFixed(1)} km/h`;
+    if (hudHeading) hudHeading.innerText = `${Math.round(heading)}° (${headingName})`;
+    if (hudTemp && temp !== null) hudTemp.innerText = `${temp.toFixed(1)}°C (Inti)`;
+    if (statCoords) statCoords.innerText = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    if (statTemp && temp !== null) statTemp.innerText = `${temp.toFixed(1)}°C`;
+    if (statStatus && fixStatus) statStatus.innerText = fixStatus;
+    if (popupSpeed) popupSpeed.innerText = `${speed.toFixed(1)} km/h`;
+    if (popupHeading) popupHeading.innerText = `${Math.round(heading)}° (${headingName})`;
+    if (popupCoords) popupCoords.innerText = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+}
+
+// Loop Polling Otomatis Tiap 3.5 Detik (Tanpa Refresh Halaman)
+function startGpsLiveTracking() {
+    stopGpsLiveTracking();
+
+    gpsLive.pollingTimer = setInterval(async () => {
+        if (state.currentView !== 'gps-track' || gpsLive.isSimulating) return;
+
+        try {
+            const res = await api.getLatest(state.selectedDeviceId);
+            const latest = res?.reading;
+            if (!latest) return;
+
+            const newLat = latest.latitude !== null ? Number(latest.latitude) : null;
+            const newLon = latest.longitude !== null ? Number(latest.longitude) : null;
+
+            if (newLat && newLon && (Math.abs(newLat) > 0.0001 || Math.abs(newLon) > 0.0001)) {
+                const prev = gpsLive.currentPos;
+                const isMoved = !prev || Math.abs(prev[0] - newLat) > 0.00002 || Math.abs(prev[1] - newLon) > 0.00002;
+
+                const is3D = (latest.gps_fix_status === 'FIX_3D' || latest.gps_fix_status === '3D_FIX');
+                const fixText = is3D ? '● 3D Fix (Akurat)' : '● 2D Fix';
+                const temp = latest.temperature_probe_2 !== null ? Number(latest.temperature_probe_2) : (latest.temperature_probe_1 !== null ? Number(latest.temperature_probe_1) : null);
+
+                if (isMoved && prev) {
+                    const heading = calculateGpsBearing(prev[0], prev[1], newLat, newLon);
+                    const speed = calculateGpsSpeedKmh(prev[0], prev[1], newLat, newLon, 3.5);
+                    smoothGlideVehicle(newLat, newLon, heading, 2400);
+                    updateGpsHudRealtime(newLat, newLon, speed, heading, temp, fixText);
+                } else if (!prev) {
+                    gpsLive.currentPos = [newLat, newLon];
+                    if (gpsLive.marker) gpsLive.marker.setLatLng([newLat, newLon]);
+                    updateGpsHudRealtime(newLat, newLon, 0, 0, temp, fixText);
+                }
+
+                // Update live pill status to active
+                const livePill = document.getElementById('map-live-pill');
+                const liveDot = document.getElementById('map-live-dot');
+                const liveTitle = document.getElementById('map-live-title');
+                if (livePill) livePill.className = 'map-hud-pill live-active';
+                if (liveDot) liveDot.className = 'map-live-dot';
+                if (liveTitle) liveTitle.innerText = 'LIVE GPS ACTIVE • 4G CONNECTED';
             }
-        });
+        } catch (_) {}
+    }, 3500);
+}
+
+// Stop Tracking saat Pindah Tab atau Halaman
+function stopGpsLiveTracking() {
+    if (gpsLive.pollingTimer) {
+        clearInterval(gpsLive.pollingTimer);
+        gpsLive.pollingTimer = null;
+    }
+    if (gpsLive.simTimer) {
+        clearInterval(gpsLive.simTimer);
+        gpsLive.simTimer = null;
+    }
+    if (gpsLive.animRafId) {
+        cancelAnimationFrame(gpsLive.animRafId);
+        gpsLive.animRafId = null;
+    }
+    gpsLive.isSimulating = false;
+}
+
+// Toggle Mode Simulasi Gerak Real-Time Ala Ojek Online
+function toggleGpsSimulation() {
+    const btnSim = document.getElementById('btn-toggle-simulation');
+    const simIcon = document.getElementById('sim-icon');
+    const simText = document.getElementById('sim-text');
+    const livePill = document.getElementById('map-live-pill');
+    const liveDot = document.getElementById('map-live-dot');
+    const liveTitle = document.getElementById('map-live-title');
+
+    if (gpsLive.isSimulating) {
+        // Matikan simulasi
+        gpsLive.isSimulating = false;
+        if (gpsLive.simTimer) clearInterval(gpsLive.simTimer);
+        gpsLive.simTimer = null;
+
+        if (btnSim) {
+            btnSim.style.background = '';
+            btnSim.style.color = '#b45309';
+        }
+        if (simIcon) simIcon.innerText = '🚀';
+        if (simText) simText.innerText = 'Live Demo Gerak';
+        if (livePill) livePill.className = 'map-hud-pill';
+        if (liveDot) liveDot.className = 'map-live-dot';
+        if (liveTitle) liveTitle.innerText = 'LIVE GPS ACTIVE (DEVICE MODE)';
+
+        showToast('Simulasi gerak dinonaktifkan. Kembali ke data perangkat.', 'info');
+    } else {
+        // Nyalakan simulasi
+        gpsLive.isSimulating = true;
+        gpsLive.simIndex = 0;
+
+        const corridor = gpsLive.vehicleType === 'ship' ? SIM_SHIP_CORRIDOR : SIM_TRUCK_CORRIDOR;
+
+        // Reset lintasan polyline ke titik awal simulasi
+        if (state.map && corridor.length > 0) {
+            const startPt = corridor[0];
+            gpsLive.currentPos = [startPt[0], startPt[1]];
+            if (gpsLive.marker) gpsLive.marker.setLatLng([startPt[0], startPt[1]]);
+            if (gpsLive.polyline) gpsLive.polyline.setLatLngs([[startPt[0], startPt[1]]]);
+            state.map.setView([startPt[0], startPt[1]], gpsLive.vehicleType === 'ship' ? 13 : 15);
+        }
+
+        if (btnSim) {
+            btnSim.style.background = '#f59e0b';
+            btnSim.style.color = '#ffffff';
+        }
+        if (simIcon) simIcon.innerText = '⏸️';
+        if (simText) simText.innerText = 'Hentikan Demo';
+        if (livePill) livePill.className = 'map-hud-pill live-sim';
+        if (liveDot) liveDot.className = 'map-live-dot sim-dot';
+        if (liveTitle) liveTitle.innerText = 'SIMULASI LIVE GERAK (DEMO REALTIME)';
+
+        showToast('Simulasi Live Gerak AKTIF! Kendaraan meluncur mulus waypoint demi waypoint.', 'success');
+
+        // Step generator simulasi tiap 2.6 detik
+        gpsLive.simTimer = setInterval(() => {
+            if (!gpsLive.isSimulating || state.currentView !== 'gps-track') return;
+
+            gpsLive.simIndex = (gpsLive.simIndex + 1) % corridor.length;
+            const pt = corridor[gpsLive.simIndex];
+            const prevPt = corridor[(gpsLive.simIndex - 1 + corridor.length) % corridor.length];
+
+            const targetLat = pt[0];
+            const targetLon = pt[1];
+            const targetTemp = pt[2];
+            const targetSpeed = pt[3];
+            const targetHeading = calculateGpsBearing(prevPt[0], prevPt[1], targetLat, targetLon);
+
+            smoothGlideVehicle(targetLat, targetLon, targetHeading, 2400);
+            updateGpsHudRealtime(targetLat, targetLon, targetSpeed, targetHeading, targetTemp, '● 3D Fix (Simulasi)');
+        }, 2600);
     }
 }
 
