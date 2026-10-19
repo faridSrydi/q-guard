@@ -60,15 +60,19 @@
     --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
     
-    /* SpaceX Modern Light-Mode Design Tokens */
-    --font-spacex-heading: 'Barlow Condensed', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-spacex-body: 'Barlow', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    /* Starlink & SpaceX Modern Light-Mode Design Tokens */
+    --font-starlink-heading: 'Space Grotesk', 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-starlink-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-starlink-mono: 'JetBrains Mono', monospace;
+    --font-spacex-heading: 'Space Grotesk', 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-spacex-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-spacex-mono: 'JetBrains Mono', monospace;
-    --spacex-black: #050811;
+    --spacex-black: #0f172a;
     --spacex-dark: #0f172a;
-    --spacex-border: #0f172a;
-    --spacex-hairline: rgba(15, 23, 42, 0.16);
-    --spacex-hairline-strong: rgba(15, 23, 42, 0.35);
+    --spacex-border: #e2e8f0;
+    --spacex-border-hover: #0f172a;
+    --spacex-hairline: rgba(15, 23, 42, 0.08);
+    --spacex-hairline-strong: rgba(15, 23, 42, 0.16);
 }
 
 * {
@@ -1973,29 +1977,26 @@ body.theme-light {
 }
 
 /* ==========================================================================
-   LANDING PAGE STYLES (CREATIVE & ULTRA-PROFESIONAL PORTAL Q-GUARD)
-   ========================================================================== */
-
 /* ==========================================================================
-   LANDING PAGE STYLES (SPACEX MODERN LIGHT-MODE AESTHETIC)
-   Clean white base, high-contrast dark typography, geometric sharp edges (0px radius),
-   hairline precision borders, uppercase telemetry headers, and signature outline buttons.
+   LANDING PAGE STYLES (STARLINK / SPACEX MODERN LIGHT-MODE AESTHETIC)
+   Clean white canvas, crisp modern geometric typography (Space Grotesk & Inter),
+   engineered cards with sleek 8-12px micro-radii, hairline borders, and refined elevation.
    ========================================================================== */
 
 .landing-page {
     background-color: #ffffff;
     background-image: 
-        linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
-    background-size: 40px 40px;
+        linear-gradient(rgba(15, 23, 42, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15, 23, 42, 0.025) 1px, transparent 1px);
+    background-size: 32px 32px;
     color: var(--spacex-dark);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    font-family: var(--font-spacex-body);
+    font-family: var(--font-starlink-body);
     overflow-x: hidden;
     position: relative;
-    letter-spacing: 0.1px;
+    letter-spacing: -0.01em;
 }
 
 .landing-page.hidden {
@@ -2009,7 +2010,7 @@ body.theme-light {
     padding: 0 24px;
 }
 
-/* Gradient & Outline Typography */
+/* Gradient & Typography Utilities */
 .gradient-text {
     background: linear-gradient(135deg, #0284c7 0%, #2563eb 55%, #0f172a 100%);
     -webkit-background-clip: text;
@@ -2019,28 +2020,31 @@ body.theme-light {
 
 .spacex-gradient-text {
     display: block;
-    color: #050811;
-    letter-spacing: 0.5px;
+    color: #0284c7;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.02em;
 }
 
 .text-gradient {
-    color: #050811;
-    font-family: var(--font-spacex-heading);
-    font-weight: 900;
+    color: #0f172a;
+    font-family: var(--font-starlink-heading);
+    font-weight: 800;
 }
 
 .text-primary-cyan { color: #0284c7 !important; }
 .text-primary-blue { color: #2563eb !important; }
 
-/* Header & Sticky Navbar */
+/* Header & Sticky Starlink Navbar */
 .landing-header {
     position: sticky;
     top: 0;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border-bottom: 1.5px solid #0f172a;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid #e2e8f0;
     transition: all 0.25s ease;
 }
 
@@ -2057,7 +2061,7 @@ body.theme-light {
     gap: 12px;
     text-decoration: none;
     color: inherit;
-    transition: transform 0.2s ease;
+    transition: opacity 0.2s ease;
 }
 
 .landing-brand:hover {
@@ -2067,13 +2071,14 @@ body.theme-light {
 .landing-brand-logo {
     width: 38px;
     height: 38px;
-    border-radius: 0px;
+    border-radius: 8px;
     background: #ffffff;
-    border: 1.5px solid #0f172a;
+    border: 1px solid #e2e8f0;
     padding: 3px;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .landing-brand-logo img {
@@ -2089,21 +2094,21 @@ body.theme-light {
 }
 
 .landing-brand-name {
-    font-family: var(--font-spacex-heading);
-    font-size: 24px;
-    font-weight: 900;
+    font-family: var(--font-starlink-heading);
+    font-size: 20px;
+    font-weight: 800;
     color: #0f172a;
-    letter-spacing: 2px;
-    line-height: 1;
+    letter-spacing: 0.5px;
+    line-height: 1.1;
     text-transform: uppercase;
 }
 
 .landing-brand-sub {
-    font-family: var(--font-spacex-mono);
-    font-size: 9px;
-    font-weight: 700;
+    font-family: var(--font-starlink-mono);
+    font-size: 9.5px;
+    font-weight: 600;
     color: #64748b;
-    letter-spacing: 1.5px;
+    letter-spacing: 1.2px;
     text-transform: uppercase;
 }
 
@@ -2114,76 +2119,74 @@ body.theme-light {
 }
 
 .landing-nav-link {
-    font-family: var(--font-spacex-heading);
+    font-family: var(--font-starlink-heading);
     font-size: 13px;
-    font-weight: 800;
-    letter-spacing: 2px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #0f172a;
+    color: #475569;
     text-decoration: none;
     padding: 8px 16px;
-    border-radius: 0px;
+    border-radius: 6px;
     border: 1px solid transparent;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    position: relative;
 }
 
 .landing-nav-link:hover {
-    color: #000000;
-    border-color: rgba(15, 23, 42, 0.25);
-    background: rgba(15, 23, 42, 0.04);
+    color: #0f172a;
+    background: #f1f5f9;
 }
 
 .landing-nav-link.active {
-    color: #000000;
-    border: 1px solid #0f172a;
-    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
 }
 
 .nav-spark-dot {
     width: 6px;
     height: 6px;
-    border-radius: 0px;
+    border-radius: 50%;
     background-color: #0284c7;
     animation: pulseDot 1.8s infinite;
 }
 
-/* SpaceX Signature Outline Login Button */
+/* Starlink Signature Primary Button */
 .landing-nav-btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-family: var(--font-spacex-heading);
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 2px;
+    font-family: var(--font-starlink-heading);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: #ffffff;
     background: #0f172a;
-    border: 2px solid #0f172a;
-    padding: 8px 20px;
-    border-radius: 0px;
+    border: 1px solid #0f172a;
+    padding: 9px 20px;
+    border-radius: 6px;
     cursor: pointer;
     text-decoration: none;
     margin-left: 10px;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .landing-nav-btn:hover {
-    background: #ffffff;
-    color: #0f172a;
-    border-color: #0f172a;
-    box-shadow: 3px 3px 0px #0f172a;
-    transform: translate(-1px, -1px);
+    background: #1e293b;
+    border-color: #1e293b;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+    transform: translateY(-1px);
 }
 
 .landing-nav-btn .btn-login-dot {
     width: 6px;
     height: 6px;
-    border-radius: 0px;
+    border-radius: 50%;
     background-color: #38bdf8;
 }
 
@@ -2194,9 +2197,9 @@ body.theme-light {
     justify-content: center;
     width: 40px;
     height: 40px;
-    border-radius: 0px;
+    border-radius: 6px;
     background: #ffffff;
-    border: 1.5px solid #0f172a;
+    border: 1px solid #e2e8f0;
     color: #0f172a;
     cursor: pointer;
 }
@@ -2207,8 +2210,8 @@ body.theme-light {
     gap: 8px;
     padding: 16px 24px 20px 24px;
     background: #ffffff;
-    border-bottom: 1.5px solid #0f172a;
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+    border-bottom: 1px solid #e2e8f0;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.06);
 }
 
 .landing-mobile-drawer.hidden {
@@ -2216,22 +2219,22 @@ body.theme-light {
 }
 
 .landing-mobile-link {
-    font-family: var(--font-spacex-heading);
+    font-family: var(--font-starlink-heading);
     font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 1.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     color: #0f172a;
     text-decoration: none;
     padding: 10px 14px;
-    border-radius: 0px;
+    border-radius: 6px;
     border: 1px solid transparent;
     transition: all 0.2s;
 }
 
 .landing-mobile-link:hover, .landing-mobile-link.active {
-    color: #000000;
-    border-color: #0f172a;
+    color: #0f172a;
+    border-color: #e2e8f0;
     background: #f8fafc;
 }
 
@@ -2240,30 +2243,30 @@ body.theme-light {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    font-family: var(--font-spacex-heading);
+    font-family: var(--font-starlink-heading);
     font-size: 13px;
-    font-weight: 800;
-    letter-spacing: 2px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: #ffffff;
     background: #0f172a;
-    border: 2px solid #0f172a;
+    border: 1px solid #0f172a;
     padding: 12px 18px;
-    border-radius: 0px;
+    border-radius: 6px;
     cursor: pointer;
     margin-top: 6px;
 }
 
-/* SpaceX Light-Mode Telemetry Ticker Ribbon */
+/* Starlink Telemetry Ticker Ribbon */
 .landing-ticker-bar {
-    background: #ffffff;
+    background: #f8fafc;
     color: #0f172a;
-    font-family: var(--font-spacex-mono);
+    font-family: var(--font-starlink-mono);
     font-size: 11px;
-    border-bottom: 1.5px solid #0f172a;
-    border-top: 1px solid rgba(15, 23, 42, 0.1);
+    border-bottom: 1px solid #e2e8f0;
+    border-top: 1px solid #f1f5f9;
     overflow: hidden;
-    padding: 8px 0;
+    padding: 7px 0;
 }
 
 .ticker-flex {
@@ -2282,18 +2285,18 @@ body.theme-light {
     gap: 6px;
     background: #0f172a;
     border: 1px solid #0f172a;
-    padding: 3px 10px;
-    border-radius: 0px;
+    padding: 2.5px 8px;
+    border-radius: 4px;
     color: #ffffff;
-    font-family: var(--font-spacex-mono);
+    font-family: var(--font-starlink-mono);
     flex-shrink: 0;
 }
 
 .ticker-badge-text {
-    font-size: 10px;
-    font-weight: 800;
+    font-size: 9.5px;
+    font-weight: 700;
     color: #34d399;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
 }
 
 .ticker-content-wrapper {
@@ -2301,27 +2304,27 @@ body.theme-light {
     align-items: center;
     gap: 16px;
     font-size: 11px;
-    color: #334155;
-    letter-spacing: 1px;
+    color: #475569;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
-    font-family: var(--font-spacex-mono);
+    font-family: var(--font-starlink-mono);
 }
 
 .ticker-tag {
-    background: rgba(15, 23, 42, 0.08);
-    color: #0f172a;
-    border: 1px solid rgba(15, 23, 42, 0.3);
-    padding: 2px 7px;
-    border-radius: 0px;
-    font-size: 10px;
-    font-weight: 800;
-    margin-right: 8px;
-    letter-spacing: 1px;
-    font-family: var(--font-spacex-mono);
+    background: #e2e8f0;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 9.5px;
+    font-weight: 700;
+    margin-right: 6px;
+    letter-spacing: 0.8px;
+    font-family: var(--font-starlink-mono);
 }
 
 .ticker-bullet {
-    color: #94a3b8;
+    color: #cbd5e1;
     font-weight: 700;
 }
 
@@ -2330,8 +2333,8 @@ body.theme-light {
     position: absolute;
     border-radius: 50%;
     pointer-events: none;
-    filter: blur(100px);
-    opacity: 0.15;
+    filter: blur(120px);
+    opacity: 0.12;
     z-index: 0;
 }
 
@@ -2351,12 +2354,12 @@ body.theme-light {
     left: 8%;
 }
 
-/* 1. HERO SECTION (SpaceX Light-Mode Specification) */
+/* 1. HERO SECTION (Starlink Modern Specification) */
 .landing-hero {
     position: relative;
-    padding: 72px 0 88px 0;
+    padding: 72px 0 80px 0;
     overflow: hidden;
-    border-bottom: 1.5px solid #0f172a;
+    border-bottom: 1px solid #e2e8f0;
     background: #ffffff;
 }
 
@@ -2373,55 +2376,55 @@ body.theme-light {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: #ffffff;
-    border: 1.5px solid #0f172a;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     padding: 5px 14px;
-    border-radius: 0px;
-    margin-bottom: 22px;
-    box-shadow: 4px 4px 0px #0f172a;
+    border-radius: 9999px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .badge-text {
-    font-family: var(--font-spacex-heading);
-    font-size: 12px;
-    font-weight: 800;
-    color: #0f172a;
-    letter-spacing: 2px;
+    font-family: var(--font-starlink-heading);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #334155;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
 }
 
 .badge-sub-pill {
     background: #0f172a;
     color: #ffffff;
-    font-family: var(--font-spacex-mono);
-    font-size: 10px;
-    font-weight: 800;
-    padding: 2px 6px;
-    border-radius: 0px;
-    letter-spacing: 1px;
+    font-family: var(--font-starlink-mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 9999px;
+    letter-spacing: 0.5px;
 }
 
 .hero-title {
-    font-family: var(--font-spacex-heading);
-    font-size: 54px;
-    font-weight: 900;
-    line-height: 1.05;
-    color: #050811;
-    letter-spacing: -0.5px;
+    font-family: var(--font-starlink-heading);
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #0f172a;
+    letter-spacing: -0.025em;
     margin-bottom: 20px;
     text-transform: uppercase;
 }
 
 .hero-lead {
-    font-family: var(--font-spacex-body);
-    font-size: 17px;
-    line-height: 1.6;
-    color: #334155;
-    margin-bottom: 26px;
+    font-family: var(--font-starlink-body);
+    font-size: 16.5px;
+    line-height: 1.65;
+    color: #475569;
+    margin-bottom: 28px;
     max-width: 580px;
 }
 
-/* Hero Tech Chips (SpaceX Rectangular Specification Tags) */
+/* Hero Tech Chips (Starlink Clean Hardware Tags) */
 .hero-tech-chips {
     display: flex;
     flex-wrap: wrap;
@@ -2433,70 +2436,69 @@ body.theme-light {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #ffffff;
-    border: 1.5px solid rgba(15, 23, 42, 0.22);
-    padding: 6px 14px;
-    border-radius: 0px;
-    font-family: var(--font-spacex-heading);
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 1.5px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-family: var(--font-starlink-heading);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #0f172a;
-    transition: all 0.2s ease;
+    color: #334155;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tech-chip:hover {
     border-color: #0f172a;
-    background: #0f172a;
-    color: #ffffff;
-    transform: translateY(-2px);
-    box-shadow: 3px 3px 0px rgba(15, 23, 42, 0.2);
+    background: #ffffff;
+    color: #0f172a;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
 }
 
 .chip-dot {
     width: 6px;
     height: 6px;
-    border-radius: 0px;
+    border-radius: 50%;
     background-color: #0284c7;
 }
 
 .hero-actions {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 14px;
     flex-wrap: wrap;
-    margin-bottom: 40px;
+    margin-bottom: 38px;
 }
 
-/* SpaceX Signature Box Outline Buttons */
+/* Starlink Buttons */
 .hero-cta-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    padding: 16px 36px;
-    border-radius: 0px;
-    border: 2px solid #0f172a;
+    padding: 14px 30px;
+    border-radius: 6px;
+    border: 1px solid #0f172a;
     background: #0f172a;
     color: #ffffff;
-    font-family: var(--font-spacex-heading);
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 2px;
+    font-family: var(--font-starlink-heading);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     text-decoration: none;
     cursor: pointer;
-    box-shadow: 4px 4px 0px rgba(15, 23, 42, 0.15);
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hero-cta-btn:hover {
-    background: #ffffff;
-    color: #0f172a;
-    border-color: #0f172a;
-    box-shadow: 6px 6px 0px #0f172a;
-    transform: translate(-2px, -2px);
+    background: #1e293b;
+    border-color: #1e293b;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+    transform: translateY(-1px);
 }
 
 .hero-sim-btn {
@@ -2504,27 +2506,27 @@ body.theme-light {
     align-items: center;
     justify-content: center;
     gap: 10px;
-    padding: 16px 32px;
-    border-radius: 0px;
-    border: 2px solid #0f172a;
-    background: transparent;
+    padding: 14px 28px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
     color: #0f172a;
-    font-family: var(--font-spacex-heading);
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 2px;
+    font-family: var(--font-starlink-heading);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     text-decoration: none;
     cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hero-sim-btn:hover {
-    background: #0f172a;
-    color: #ffffff;
     border-color: #0f172a;
-    box-shadow: 4px 4px 0px rgba(15, 23, 42, 0.2);
-    transform: translate(-2px, -2px);
+    background: #f8fafc;
+    color: #0f172a;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    transform: translateY(-1px);
 }
 
 .hero-stats {
@@ -2532,7 +2534,7 @@ body.theme-light {
     grid-template-columns: repeat(4, 1fr);
     gap: 18px;
     padding-top: 24px;
-    border-top: 1.5px solid #0f172a;
+    border-top: 1px solid #e2e8f0;
 }
 
 .stat-pill {
@@ -2541,44 +2543,45 @@ body.theme-light {
 }
 
 .stat-num {
-    font-family: var(--font-spacex-heading);
-    font-size: 34px;
-    font-weight: 900;
+    font-family: var(--font-starlink-heading);
+    font-size: 32px;
+    font-weight: 800;
     line-height: 1;
-    color: #050811;
-    letter-spacing: -0.5px;
+    color: #0f172a;
+    letter-spacing: -0.02em;
 }
 
 .stat-label {
-    font-family: var(--font-spacex-mono);
-    font-size: 10px;
+    font-family: var(--font-starlink-mono);
+    font-size: 9.5px;
     color: #64748b;
-    font-weight: 700;
+    font-weight: 600;
     margin-top: 5px;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
     text-transform: uppercase;
 }
 
-/* SpaceX Hero Visual Image Card (Sharp Precision Frame) */
+/* Starlink Hero Visual Image Card */
 .hero-image-card {
     background: #ffffff;
-    border: 2px solid #0f172a;
-    border-radius: 0px;
-    box-shadow: 8px 8px 0px #0f172a;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 16px 36px -8px rgba(15, 23, 42, 0.1), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
     overflow: hidden;
     position: relative;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hero-image-card:hover {
-    transform: translate(-3px, -3px);
-    box-shadow: 12px 12px 0px #0f172a;
+    border-color: #cbd5e1;
+    box-shadow: 0 20px 44px -8px rgba(15, 23, 42, 0.14);
+    transform: translateY(-2px);
 }
 
 .hero-image-wrap {
     position: relative;
     overflow: hidden;
-    background: #050811;
+    background: #0f172a;
     aspect-ratio: 16 / 10;
 }
 
@@ -2587,7 +2590,7 @@ body.theme-light {
     height: 100%;
     object-fit: cover;
     display: block;
-    filter: contrast(105%) brightness(98%);
+    filter: contrast(102%) brightness(99%);
     transition: transform 0.6s ease;
 }
 
@@ -2600,17 +2603,18 @@ body.theme-light {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: rgba(255, 255, 255, 0.95);
-    border: 1.5px solid #0f172a;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(8px);
+    border: 1px solid #e2e8f0;
     color: #0f172a;
     padding: 6px 12px;
-    border-radius: 0px;
-    font-family: var(--font-spacex-mono);
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 1px;
+    border-radius: 6px;
+    font-family: var(--font-starlink-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
-    box-shadow: 2px 2px 0px #0f172a;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
     z-index: 2;
 }
 
@@ -2623,7 +2627,7 @@ body.theme-light {
     bottom: 14px;
     right: 14px;
     background: #ffffff;
-    border-color: #0f172a;
+    border-color: #e2e8f0;
 }
 
 .hero-image-caption {
@@ -2632,7 +2636,7 @@ body.theme-light {
     gap: 12px;
     padding: 16px 20px;
     background: #ffffff;
-    border-top: 1.5px solid #0f172a;
+    border-top: 1px solid #f1f5f9;
 }
 
 .caption-item {
@@ -2641,73 +2645,73 @@ body.theme-light {
 }
 
 .caption-label {
-    font-family: var(--font-spacex-mono);
-    font-size: 10px;
+    font-family: var(--font-starlink-mono);
+    font-size: 9.5px;
     color: #64748b;
-    font-weight: 700;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
     margin-bottom: 3px;
 }
 
 .caption-val {
-    font-family: var(--font-spacex-mono);
-    font-size: 12px;
-    font-weight: 800;
+    font-family: var(--font-starlink-mono);
+    font-size: 11.5px;
+    font-weight: 700;
     color: #0f172a;
 }
 
 /* Global Landing Section Structure */
 .landing-section {
-    padding: 88px 0;
-    border-bottom: 1.5px solid #0f172a;
+    padding: 80px 0;
+    border-bottom: 1px solid #e2e8f0;
     background: #ffffff;
 }
 
 .section-heading-center {
     text-align: center;
     max-width: 840px;
-    margin: 0 auto 56px auto;
+    margin: 0 auto 52px auto;
 }
 
 .section-tag {
     display: inline-block;
-    font-family: var(--font-spacex-mono);
-    font-size: 11px;
-    font-weight: 800;
-    color: #0f172a;
-    letter-spacing: 2.5px;
+    font-family: var(--font-starlink-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
-    background: transparent;
-    border: 1px solid #0f172a;
-    padding: 4px 14px;
-    border-radius: 0px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 4px 12px;
+    border-radius: 9999px;
     margin-bottom: 16px;
 }
 
 .section-title {
-    font-family: var(--font-spacex-heading);
-    font-size: 44px;
-    font-weight: 900;
-    color: #050811;
-    letter-spacing: -0.5px;
+    font-family: var(--font-starlink-heading);
+    font-size: 38px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.02em;
     line-height: 1.15;
     margin-bottom: 16px;
     text-transform: uppercase;
 }
 
 .section-subtitle {
-    font-family: var(--font-spacex-body);
+    font-family: var(--font-starlink-body);
     font-size: 16px;
     line-height: 1.65;
     color: #475569;
 }
 
-/* Section Probes Showcase (SpaceX Hardware Specification Card) */
+/* Section Probes Showcase (Starlink Hardware Specification Card) */
 .section-probes {
     background: #ffffff;
-    border-bottom: 1.5px solid #0f172a;
-    padding: 88px 0;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 80px 0;
 }
 
 .probe-showcase-grid {
@@ -2720,11 +2724,11 @@ body.theme-light {
 
 .probe-image-card {
     position: relative;
-    border-radius: 0px;
+    border-radius: 12px;
     overflow: hidden;
     background: #ffffff;
-    border: 2px solid #0f172a;
-    box-shadow: 8px 8px 0px #0f172a;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
 }
 
 .probe-showcase-img {
@@ -2744,49 +2748,50 @@ body.theme-light {
     position: absolute;
     bottom: 14px;
     left: 14px;
-    background: rgba(255, 255, 255, 0.95);
-    border: 1.5px solid #0f172a;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(8px);
+    border: 1px solid #e2e8f0;
     color: #0f172a;
-    font-family: var(--font-spacex-mono);
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 1px;
+    font-family: var(--font-starlink-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
     padding: 6px 12px;
-    border-radius: 0px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     gap: 8px;
-    box-shadow: 2px 2px 0px #0f172a;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .pulse-dot-cyan {
     width: 6px;
     height: 6px;
-    border-radius: 0px;
+    border-radius: 50%;
     background-color: #0284c7;
 }
 
 .probe-info-cards {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
 }
 
 .probe-feature-card {
     background: #ffffff;
-    border: 1.5px solid rgba(15, 23, 42, 0.2);
-    border-left: 4px solid #0f172a;
-    border-radius: 0px;
+    border: 1px solid #e2e8f0;
+    border-left: 3.5px solid #0f172a;
+    border-radius: 8px;
     padding: 18px 22px;
-    box-shadow: 4px 4px 0px rgba(15, 23, 42, 0.06);
-    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .probe-feature-card:hover {
-    transform: translate(-2px, -2px);
-    border-color: #0f172a;
-    border-left: 4px solid #0284c7;
-    box-shadow: 6px 6px 0px #0f172a;
+    transform: translateY(-2px);
+    border-color: #cbd5e1;
+    border-left-color: #0284c7;
+    box-shadow: 0 10px 24px -4px rgba(15, 23, 42, 0.08);
 }
 
 .probe-feature-header {
@@ -2797,54 +2802,54 @@ body.theme-light {
 }
 
 .probe-feature-badge {
-    font-family: var(--font-spacex-mono);
-    font-size: 11px;
-    font-weight: 800;
+    font-family: var(--font-starlink-mono);
+    font-size: 10px;
+    font-weight: 700;
     padding: 3px 8px;
-    border-radius: 0px;
+    border-radius: 4px;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    border: 1px solid rgba(15, 23, 42, 0.25);
-    background: #ffffff;
-    color: #0f172a;
+    letter-spacing: 0.8px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #334155;
 }
 
-.probe-feature-badge.t1 { border-color: #0284c7; color: #0284c7; }
-.probe-feature-badge.t2 { border-color: #16a34a; color: #16a34a; }
-.probe-feature-badge.t3 { border-color: #d97706; color: #d97706; }
+.probe-feature-badge.t1 { border-color: #bae6fd; color: #0284c7; background: #f0f9ff; }
+.probe-feature-badge.t2 { border-color: #bbf7d0; color: #16a34a; background: #f0fdf4; }
+.probe-feature-badge.t3 { border-color: #fde68a; color: #d97706; background: #fffbeb; }
 
 .probe-temp-pill {
-    font-family: var(--font-spacex-mono);
-    font-size: 16px;
-    font-weight: 800;
+    font-family: var(--font-starlink-mono);
+    font-size: 15px;
+    font-weight: 700;
 }
 
 .probe-feature-card h4 {
-    font-family: var(--font-spacex-heading);
-    font-size: 16px;
-    font-weight: 800;
-    color: #050811;
-    letter-spacing: 0.5px;
+    font-family: var(--font-starlink-heading);
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
     margin: 0 0 6px 0;
 }
 
 .probe-feature-card p {
-    font-family: var(--font-spacex-body);
+    font-family: var(--font-starlink-body);
     font-size: 13px;
     line-height: 1.55;
     color: #475569;
     margin: 0;
 }
 
-/* Route Banner Card (SpaceX Mission Profile) */
+/* Route Banner Card (Starlink Mission Profile) */
 .route-banner-card {
     position: relative;
-    border-radius: 0px;
+    border-radius: 12px;
     overflow: hidden;
     margin-bottom: 32px;
-    border: 2px solid #0f172a;
-    box-shadow: 8px 8px 0px #0f172a;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
 }
 
 .route-banner-img {
@@ -2865,7 +2870,7 @@ body.theme-light {
     left: 0;
     right: 0;
     padding: 24px;
-    background: linear-gradient(180deg, transparent 0%, rgba(5, 8, 17, 0.92) 100%);
+    background: linear-gradient(180deg, transparent 0%, rgba(15, 23, 42, 0.88) 100%);
     color: #ffffff;
     display: flex;
     flex-direction: column;
@@ -2873,68 +2878,68 @@ body.theme-light {
 }
 
 .route-banner-tag {
-    font-family: var(--font-spacex-mono);
-    font-size: 12px;
-    font-weight: 800;
+    font-family: var(--font-starlink-mono);
+    font-size: 11px;
+    font-weight: 700;
     color: #38bdf8;
-    letter-spacing: 2px;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
 }
 
 .route-banner-sub {
-    font-family: var(--font-spacex-heading);
-    font-size: 18px;
+    font-family: var(--font-starlink-heading);
+    font-size: 17px;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.02em;
     color: #f8fafc;
 }
 
 /* 2. INTERACTIVE SIMULATOR SECTION */
 .section-simulator {
     background: #ffffff;
-    border-bottom: 1.5px solid #0f172a;
+    border-bottom: 1px solid #e2e8f0;
     position: relative;
-    padding: 88px 0;
+    padding: 80px 0;
 }
 
 .sim-scenario-selector {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
-    margin-bottom: 36px;
+    gap: 16px;
+    margin-bottom: 32px;
 }
 
 .sim-scenario-btn {
     background: #ffffff;
-    border: 1.5px solid rgba(15, 23, 42, 0.22);
-    border-radius: 0px;
-    padding: 20px 22px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 18px 20px;
     display: flex;
     align-items: flex-start;
     gap: 14px;
     text-align: left;
     cursor: pointer;
-    transition: all 0.25s ease;
-    box-shadow: 4px 4px 0px rgba(15, 23, 42, 0.05);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
 .sim-scenario-btn:hover {
-    border-color: #0f172a;
-    transform: translate(-2px, -2px);
-    box-shadow: 6px 6px 0px #0f172a;
+    border-color: #94a3b8;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.06);
 }
 
 .sim-scenario-btn.active {
-    border: 2px solid #0f172a;
+    border: 1.5px solid #0f172a;
     background: #ffffff;
-    box-shadow: 6px 6px 0px #0f172a;
-    transform: translate(-2px, -2px);
+    box-shadow: 0 0 0 1px #0f172a, 0 8px 20px -4px rgba(15, 23, 42, 0.08);
+    transform: translateY(-1px);
 }
 
 .sim-btn-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 0px;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
     flex-shrink: 0;
     margin-top: 4px;
 }
@@ -2949,27 +2954,27 @@ body.theme-light {
 }
 
 .sim-btn-badge {
-    font-family: var(--font-spacex-mono);
-    font-size: 10px;
-    font-weight: 800;
+    font-family: var(--font-starlink-mono);
+    font-size: 9.5px;
+    font-weight: 700;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
     margin-bottom: 3px;
 }
 
 .sim-btn-title {
-    font-family: var(--font-spacex-heading);
-    font-size: 16px;
-    font-weight: 800;
-    color: #050811;
-    letter-spacing: 1px;
+    font-family: var(--font-starlink-heading);
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
     margin-bottom: 4px;
 }
 
 .sim-btn-desc {
-    font-family: var(--font-spacex-body);
+    font-family: var(--font-starlink-body);
     font-size: 13px;
     line-height: 1.45;
     color: #475569;
@@ -2979,113 +2984,113 @@ body.theme-light {
 .sim-stage-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 28px;
+    gap: 24px;
 }
 
 .sim-panel {
     background: #ffffff;
-    border: 2px solid #0f172a;
-    border-radius: 0px;
-    padding: 28px;
-    box-shadow: 8px 8px 0px #0f172a;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 26px;
+    box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05);
 }
 
 .sim-panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-bottom: 16px;
-    border-bottom: 1.5px solid #0f172a;
-    margin-bottom: 22px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 20px;
 }
 
 .sim-panel-title {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-family: var(--font-spacex-heading);
-    font-size: 18px;
-    font-weight: 800;
-    letter-spacing: 1.5px;
+    font-family: var(--font-starlink-heading);
+    font-size: 15.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #050811;
+    color: #0f172a;
 }
 
 .sim-chip-tag {
-    font-family: var(--font-spacex-mono);
-    font-size: 10px;
-    font-weight: 800;
+    font-family: var(--font-starlink-mono);
+    font-size: 9.5px;
+    font-weight: 700;
     background: #0f172a;
     border: 1px solid #0f172a;
     color: #ffffff;
-    padding: 4px 10px;
-    border-radius: 0px;
-    letter-spacing: 1.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 1px;
 }
 
 .sim-seal-badge {
-    font-family: var(--font-spacex-mono);
-    font-size: 10px;
-    font-weight: 800;
-    background: #ffffff;
-    border: 1.5px solid #166534;
+    font-family: var(--font-starlink-mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
     color: #166534;
-    padding: 4px 10px;
-    border-radius: 0px;
-    letter-spacing: 1.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 1px;
 }
 
 /* Simulator Probes */
 .sim-probes-container {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
     margin-bottom: 20px;
 }
 
 .sim-probe-card {
-    background: #ffffff;
-    border: 1px solid rgba(15, 23, 42, 0.2);
-    border-radius: 0px;
-    padding: 14px 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 13px 15px;
 }
 
 .sim-probe-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 8px;
+    margin-bottom: 7px;
 }
 
 .sim-probe-badge {
-    font-family: var(--font-spacex-heading);
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 0.5px;
+    font-family: var(--font-starlink-heading);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
     color: #0f172a;
     text-transform: uppercase;
 }
 
 .sim-probe-temp {
-    font-family: var(--font-spacex-mono);
-    font-size: 20px;
-    font-weight: 800;
+    font-family: var(--font-starlink-mono);
+    font-size: 18px;
+    font-weight: 700;
     color: #0f172a;
     transition: color 0.3s ease;
 }
 
 .sim-progress-track {
-    height: 6px;
+    height: 5px;
     background: #e2e8f0;
-    border-radius: 0px;
+    border-radius: 9999px;
     overflow: hidden;
-    margin-bottom: 8px;
+    margin-bottom: 7px;
 }
 
 .sim-progress-fill {
     height: 100%;
     background: #0f172a;
-    border-radius: 0px;
+    border-radius: 9999px;
     transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s ease;
 }
 
@@ -3093,8 +3098,8 @@ body.theme-light {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-family: var(--font-spacex-mono);
-    font-size: 11px;
+    font-family: var(--font-starlink-mono);
+    font-size: 10.5px;
     color: #64748b;
     font-weight: 600;
 }
@@ -3108,103 +3113,106 @@ body.theme-light {
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
     padding-top: 16px;
-    border-top: 1.5px solid #0f172a;
+    border-top: 1px solid #e2e8f0;
 }
 
 .sim-aux-item {
-    background: #ffffff;
-    border: 1px solid rgba(15, 23, 42, 0.2);
-    border-radius: 0px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
     padding: 8px 12px;
     display: flex;
     flex-direction: column;
 }
 
 .aux-label {
-    font-family: var(--font-spacex-mono);
-    font-size: 10px;
+    font-family: var(--font-starlink-mono);
+    font-size: 9.5px;
     color: #64748b;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     margin-bottom: 2px;
 }
 
 .aux-val {
-    font-family: var(--font-spacex-mono);
+    font-family: var(--font-starlink-mono);
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 700;
 }
 
 /* AI & Decision Panel */
 .sim-analysis-cards {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 14px;
-    margin-bottom: 22px;
+    gap: 12px;
+    margin-bottom: 20px;
 }
 
 .sim-calc-card {
-    background: #ffffff;
-    border: 1px solid rgba(15, 23, 42, 0.2);
-    border-radius: 0px;
-    padding: 14px 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 13px 15px;
     display: flex;
     flex-direction: column;
 }
 
 .sim-calc-label {
-    font-family: var(--font-spacex-mono);
-    font-size: 10px;
+    font-family: var(--font-starlink-mono);
+    font-size: 9.5px;
     color: #64748b;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
 }
 
 .sim-calc-val {
-    font-family: var(--font-spacex-mono);
-    font-size: 22px;
-    font-weight: 800;
+    font-family: var(--font-starlink-mono);
+    font-size: 20px;
+    font-weight: 700;
     margin: 4px 0;
     color: #0f172a;
 }
 
 .sim-calc-sub {
-    font-family: var(--font-spacex-mono);
+    font-family: var(--font-starlink-mono);
     font-size: 10px;
     color: #64748b;
 }
 
 /* Decision Box */
 .sim-decision-box {
-    border-radius: 0px;
-    padding: 22px;
+    border-radius: 8px;
+    padding: 20px;
     display: flex;
     gap: 16px;
-    margin-bottom: 22px;
+    margin-bottom: 20px;
     background: #ffffff;
-    border: 2px solid #0f172a;
-    box-shadow: 4px 4px 0px #0f172a;
+    border: 1.5px solid #0f172a;
+    box-shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.06);
     transition: all 0.3s ease;
 }
 
 .sim-decision-box.decision-green {
     border-color: #10b981;
+    background: #f0fdf4;
 }
 
 .sim-decision-box.decision-yellow {
     border-color: #f59e0b;
+    background: #fffbeb;
 }
 
 .sim-decision-box.decision-red {
     border-color: #ef4444;
+    background: #fef2f2;
 }
 
 .decision-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 0px;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3212,19 +3220,19 @@ body.theme-light {
     border: 1.5px solid currentColor;
 }
 
-.decision-green .decision-icon { color: #059669; }
-.decision-yellow .decision-icon { color: #d97706; }
-.decision-red .decision-icon { color: #dc2626; }
+.decision-green .decision-icon { color: #059669; background: #ffffff; }
+.decision-yellow .decision-icon { color: #d97706; background: #ffffff; }
+.decision-red .decision-icon { color: #dc2626; background: #ffffff; }
 
 .decision-body {
     flex: 1;
 }
 
 .decision-pre {
-    font-family: var(--font-spacex-mono);
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 1.5px;
+    font-family: var(--font-starlink-mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
     text-transform: uppercase;
     display: block;
     margin-bottom: 3px;
@@ -3235,13 +3243,13 @@ body.theme-light {
 .decision-red .decision-pre { color: #dc2626; }
 
 .decision-status {
-    font-family: var(--font-spacex-heading);
-    font-size: 24px;
-    font-weight: 900;
-    letter-spacing: 1px;
+    font-family: var(--font-starlink-heading);
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
-    margin-bottom: 6px;
-    line-height: 1.1;
+    margin-bottom: 5px;
+    line-height: 1.15;
 }
 
 .decision-green .decision-status { color: #065f46; }
@@ -3249,7 +3257,7 @@ body.theme-light {
 .decision-red .decision-status { color: #991b1b; }
 
 .decision-note {
-    font-family: var(--font-spacex-body);
+    font-family: var(--font-starlink-body);
     font-size: 13px;
     line-height: 1.55;
     color: #334155;
@@ -3261,7 +3269,7 @@ body.theme-light {
     align-items: center;
     justify-content: space-between;
     padding-top: 16px;
-    border-top: 1.5px solid #0f172a;
+    border-top: 1px solid #e2e8f0;
 }
 
 .sim-dossier-meta {
@@ -3270,67 +3278,68 @@ body.theme-light {
 }
 
 .dossier-id {
-    font-family: var(--font-spacex-mono);
-    font-size: 12px;
-    font-weight: 800;
+    font-family: var(--font-starlink-mono);
+    font-size: 11.5px;
+    font-weight: 700;
     color: #0f172a;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
 }
 
 .dossier-cert {
-    font-family: var(--font-spacex-mono);
-    font-size: 10px;
+    font-family: var(--font-starlink-mono);
+    font-size: 9.5px;
     color: #64748b;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
 }
 
 /* 3. INTERACTIVE LOGISTICS JOURNEY SECTION */
 .section-journey {
     background: #ffffff;
-    border-bottom: 1.5px solid #0f172a;
-    padding: 88px 0;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 80px 0;
 }
 
 .journey-stepper {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 36px;
+    margin-bottom: 32px;
 }
 
 .journey-step-btn {
     background: #ffffff;
-    border: 1.5px solid rgba(15, 23, 42, 0.25);
-    border-radius: 0px;
-    padding: 14px 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 18px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     cursor: pointer;
-    transition: all 0.25s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .journey-step-btn:hover {
-    border-color: #0f172a;
-    transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0px #0f172a;
+    border-color: #94a3b8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .journey-step-btn.active {
-    border: 2px solid #0f172a;
+    border: 1px solid #0f172a;
     background: #0f172a;
     color: #ffffff;
-    box-shadow: 4px 4px 0px rgba(15, 23, 42, 0.25);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.15);
 }
 
 .journey-step-btn .step-num {
-    font-family: var(--font-spacex-mono);
-    font-size: 13px;
-    font-weight: 800;
+    font-family: var(--font-starlink-mono);
+    font-size: 11.5px;
+    font-weight: 700;
     color: #64748b;
     background: #f1f5f9;
-    padding: 4px 8px;
-    border-radius: 0px;
+    padding: 3px 7px;
+    border-radius: 4px;
 }
 
 .journey-step-btn.active .step-num {
@@ -3339,27 +3348,27 @@ body.theme-light {
 }
 
 .journey-step-btn .step-title {
-    font-family: var(--font-spacex-heading);
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 1.5px;
+    font-family: var(--font-starlink-heading);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     color: inherit;
 }
 
 .journey-step-connector {
     flex: 1;
-    height: 1.5px;
-    background: #0f172a;
+    height: 1px;
+    background: #cbd5e1;
     margin: 0 10px;
 }
 
 .journey-detail-card {
     background: #ffffff;
-    border: 2px solid #0f172a;
-    border-radius: 0px;
-    padding: 36px;
-    box-shadow: 8px 8px 0px #0f172a;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 32px;
+    box-shadow: 0 6px 20px -2px rgba(15, 23, 42, 0.06);
 }
 
 .journey-card-grid {
@@ -3371,42 +3380,42 @@ body.theme-light {
 
 .journey-stage-badge {
     display: inline-block;
-    font-family: var(--font-spacex-mono);
-    font-size: 10px;
-    font-weight: 800;
-    color: #0f172a;
-    letter-spacing: 2px;
+    font-family: var(--font-starlink-mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
-    background: #ffffff;
-    border: 1.5px solid #0f172a;
-    padding: 4px 12px;
-    border-radius: 0px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 3.5px 10px;
+    border-radius: 9999px;
     margin-bottom: 14px;
 }
 
 .journey-stage-title {
-    font-family: var(--font-spacex-heading);
-    font-size: 28px;
-    font-weight: 900;
-    color: #050811;
-    letter-spacing: -0.3px;
+    font-family: var(--font-starlink-heading);
+    font-size: 26px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.01em;
     text-transform: uppercase;
     margin-bottom: 12px;
     line-height: 1.15;
 }
 
 .journey-stage-desc {
-    font-family: var(--font-spacex-body);
-    font-size: 15px;
+    font-family: var(--font-starlink-body);
+    font-size: 14.5px;
     line-height: 1.65;
-    color: #334155;
+    color: #475569;
     margin-bottom: 22px;
 }
 
 .journey-specs-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 9px;
 }
 
 .journey-spec-item {
@@ -3414,142 +3423,143 @@ body.theme-light {
     align-items: center;
     gap: 10px;
     font-size: 13px;
-    background: #ffffff;
-    border: 1px solid rgba(15, 23, 42, 0.2);
-    padding: 10px 14px;
-    border-radius: 0px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 9px 13px;
+    border-radius: 6px;
 }
 
 .journey-spec-item .spec-label {
-    font-family: var(--font-spacex-mono);
-    font-size: 11px;
-    font-weight: 700;
+    font-family: var(--font-starlink-mono);
+    font-size: 10.5px;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     color: #64748b;
 }
 
 .journey-spec-item .spec-val {
-    font-family: var(--font-spacex-mono);
-    font-weight: 800;
+    font-family: var(--font-starlink-mono);
+    font-weight: 700;
     color: #0f172a;
 }
 
 .journey-telemetry-snapshot {
     background: #ffffff;
-    border: 1.5px solid #0f172a;
-    border-radius: 0px;
-    padding: 22px;
-    box-shadow: 4px 4px 0px #0f172a;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .snapshot-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-family: var(--font-spacex-mono);
-    font-size: 11px;
-    font-weight: 800;
+    font-family: var(--font-starlink-mono);
+    font-size: 10.5px;
+    font-weight: 700;
     color: #0f172a;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
     padding-bottom: 12px;
-    border-bottom: 1.5px solid #0f172a;
-    margin-bottom: 16px;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 14px;
 }
 
 .snapshot-body {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 10px;
+    margin-bottom: 14px;
 }
 
 .snapshot-metric {
-    background: #ffffff;
-    border: 1px solid rgba(15, 23, 42, 0.18);
-    border-radius: 0px;
-    padding: 10px 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 9px 11px;
     display: flex;
     flex-direction: column;
 }
 
 .snap-lbl {
-    font-family: var(--font-spacex-mono);
-    font-size: 10px;
+    font-family: var(--font-starlink-mono);
+    font-size: 9.5px;
     color: #64748b;
-    font-weight: 700;
-    letter-spacing: 1px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
 }
 
 .snap-val {
-    font-family: var(--font-spacex-mono);
-    font-size: 18px;
-    font-weight: 800;
+    font-family: var(--font-starlink-mono);
+    font-size: 16px;
+    font-weight: 700;
     margin-top: 3px;
 }
 
 .snapshot-footer {
-    font-family: var(--font-spacex-mono);
-    font-size: 10px;
+    font-family: var(--font-starlink-mono);
+    font-size: 9.5px;
     letter-spacing: 0.5px;
     color: #64748b;
     text-align: center;
     padding-top: 10px;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid #f1f5f9;
 }
 
 /* 4. COMPARISON MATRIX SECTION */
 .section-comparison {
     background: #ffffff;
-    border-bottom: 1.5px solid #0f172a;
-    padding: 88px 0;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 80px 0;
 }
 
 .comparison-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 32px;
+    gap: 28px;
 }
 
 .comparison-card {
-    border-radius: 0px;
-    padding: 34px;
+    border-radius: 10px;
+    padding: 32px;
     position: relative;
     background: #ffffff;
-    border: 1.5px solid rgba(15, 23, 42, 0.25);
-    box-shadow: 6px 6px 0px rgba(15, 23, 42, 0.08);
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .comparison-card.conventional {
     background: #ffffff;
-    border: 1.5px solid rgba(15, 23, 42, 0.25);
+    border: 1px solid #e2e8f0;
 }
 
 .comparison-card.modern {
     background: #ffffff;
-    border: 2px solid #0f172a;
-    box-shadow: 8px 8px 0px #0f172a;
+    border: 1.5px solid #0f172a;
+    box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.1);
 }
 
 .comp-badge {
     display: inline-block;
-    font-family: var(--font-spacex-mono);
-    font-size: 10px;
-    font-weight: 800;
+    font-family: var(--font-starlink-mono);
+    font-size: 9.5px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
-    padding: 4px 12px;
-    border-radius: 0px;
+    letter-spacing: 1.2px;
+    padding: 3.5px 10px;
+    border-radius: 9999px;
     margin-bottom: 14px;
     border: 1px solid currentColor;
 }
 
 .comp-badge.old {
-    background: #ffffff;
+    background: #fef2f2;
     color: #dc2626;
-    border-color: #dc2626;
+    border-color: #fecaca;
 }
 
 .comp-badge.new {
@@ -3559,13 +3569,13 @@ body.theme-light {
 }
 
 .comp-title {
-    font-family: var(--font-spacex-heading);
-    font-size: 24px;
-    font-weight: 900;
-    color: #050811;
-    letter-spacing: 0.5px;
+    font-family: var(--font-starlink-heading);
+    font-size: 22px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
-    margin-bottom: 24px;
+    margin-bottom: 22px;
 }
 
 .comp-list {
@@ -3574,7 +3584,7 @@ body.theme-light {
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 16px;
 }
 
 .comp-item {
@@ -3586,21 +3596,21 @@ body.theme-light {
 .comp-icon {
     width: 22px;
     height: 22px;
-    border-radius: 0px;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 800;
-    font-size: 12px;
+    font-weight: 700;
+    font-size: 11px;
     flex-shrink: 0;
     margin-top: 2px;
     border: 1px solid currentColor;
 }
 
 .comp-item.negative .comp-icon {
-    background: #ffffff;
+    background: #fef2f2;
     color: #ef4444;
-    border-color: #ef4444;
+    border-color: #fecaca;
 }
 
 .comp-item.positive .comp-icon {
@@ -3610,10 +3620,10 @@ body.theme-light {
 }
 
 .comp-item strong {
-    font-family: var(--font-spacex-heading);
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 0.5px;
+    font-family: var(--font-starlink-heading);
+    font-size: 13.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
     color: #0f172a;
     display: block;
@@ -3621,7 +3631,7 @@ body.theme-light {
 }
 
 .comp-item p {
-    font-family: var(--font-spacex-body);
+    font-family: var(--font-starlink-body);
     font-size: 13px;
     line-height: 1.5;
     color: #475569;
@@ -3631,45 +3641,46 @@ body.theme-light {
 /* 5 & 6. TENTANG & ARSITEKTUR SECTIONS */
 .section-about {
     background: #ffffff;
-    border-bottom: 1.5px solid #0f172a;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .section-arch {
     background: #ffffff;
-    border-bottom: 1.5px solid #0f172a;
+    border-bottom: 1px solid #e2e8f0;
 }
 
-/* Architecture Grid (SpaceX Pillar Cards) */
+/* Architecture Grid (Starlink Pillar Cards) */
 .arch-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 28px;
+    gap: 24px;
 }
 
 .arch-card {
     background: #ffffff;
-    border: 1.5px solid rgba(15, 23, 42, 0.22);
-    border-top: 4px solid #0f172a;
-    border-radius: 0px;
-    padding: 32px;
+    border: 1px solid #e2e8f0;
+    border-top: 3.5px solid #0f172a;
+    border-radius: 10px;
+    padding: 30px;
     display: flex;
-    gap: 22px;
-    box-shadow: 6px 6px 0px rgba(15, 23, 42, 0.08);
-    transition: all 0.25s ease;
+    gap: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .arch-card:hover {
-    transform: translate(-3px, -3px);
-    border-color: #0f172a;
-    box-shadow: 10px 10px 0px #0f172a;
+    transform: translateY(-2px);
+    border-color: #cbd5e1;
+    border-top-color: #0284c7;
+    box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.08);
 }
 
 .arch-step-num {
-    font-family: var(--font-spacex-heading);
-    font-size: 46px;
-    font-weight: 900;
+    font-family: var(--font-starlink-heading);
+    font-size: 42px;
+    font-weight: 800;
     color: #0f172a;
-    opacity: 0.2;
+    opacity: 0.15;
     line-height: 1;
 }
 
@@ -3678,11 +3689,11 @@ body.theme-light {
 }
 
 .arch-icon-wrap {
-    width: 44px;
-    height: 44px;
-    border-radius: 0px;
-    background: #ffffff;
-    border: 1.5px solid #0f172a;
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     color: #0f172a;
     display: flex;
     align-items: center;
@@ -3691,29 +3702,29 @@ body.theme-light {
 }
 
 .arch-title {
-    font-family: var(--font-spacex-heading);
-    font-size: 18px;
-    font-weight: 900;
-    color: #050811;
-    letter-spacing: 0.5px;
+    font-family: var(--font-starlink-heading);
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
     margin-bottom: 8px;
 }
 
 .arch-desc {
-    font-family: var(--font-spacex-body);
-    font-size: 14px;
+    font-family: var(--font-starlink-body);
+    font-size: 13.5px;
     line-height: 1.6;
     color: #475569;
     margin-bottom: 14px;
 }
 
-/* 4. FOOTER (SpaceX Light-Mode Footer) */
+/* 4. FOOTER (Starlink Light-Mode Footer) */
 .landing-footer {
     background: #ffffff;
     color: #0f172a;
-    border-top: 2px solid #0f172a;
-    padding: 68px 0 28px 0;
+    border-top: 1px solid #e2e8f0;
+    padding: 64px 0 28px 0;
     margin-top: auto;
 }
 
@@ -3721,8 +3732,8 @@ body.theme-light {
     display: grid;
     grid-template-columns: 1.5fr 1fr 1.2fr 1fr;
     gap: 40px;
-    padding-bottom: 48px;
-    border-bottom: 1.5px solid #0f172a;
+    padding-bottom: 44px;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .footer-brand {
@@ -3733,25 +3744,25 @@ body.theme-light {
 }
 
 .footer-logo-img {
-    width: 38px;
-    height: 38px;
-    border-radius: 0px;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
     background: #ffffff;
-    border: 1.5px solid #0f172a;
+    border: 1px solid #e2e8f0;
     padding: 2px;
 }
 
 .footer-brand-name {
-    font-family: var(--font-spacex-heading);
-    font-size: 24px;
-    font-weight: 900;
+    font-family: var(--font-starlink-heading);
+    font-size: 20px;
+    font-weight: 700;
     color: #0f172a;
-    letter-spacing: 2px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
 }
 
 .footer-desc {
-    font-family: var(--font-spacex-body);
+    font-family: var(--font-starlink-body);
     font-size: 13px;
     line-height: 1.6;
     color: #475569;
@@ -3760,26 +3771,26 @@ body.theme-light {
 
 .footer-agency-badge {
     display: inline-block;
-    border: 1.5px solid #0f172a;
-    border-radius: 0px;
-    padding: 5px 12px;
-    font-family: var(--font-spacex-mono);
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 1.5px;
+    border: 1px solid #e2e8f0;
+    border-radius: 9999px;
+    padding: 4px 12px;
+    font-family: var(--font-starlink-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
     text-transform: uppercase;
-    color: #0f172a;
-    background: #ffffff;
+    color: #334155;
+    background: #f8fafc;
 }
 
 .footer-col-title {
-    font-family: var(--font-spacex-heading);
-    font-size: 14px;
-    font-weight: 900;
+    font-family: var(--font-starlink-heading);
+    font-size: 12.5px;
+    font-weight: 700;
     color: #0f172a;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 18px;
+    letter-spacing: 0.06em;
+    margin-bottom: 16px;
 }
 
 .footer-links-list {
@@ -3792,17 +3803,16 @@ body.theme-light {
 }
 
 .footer-links-list li a {
-    font-family: var(--font-spacex-body);
+    font-family: var(--font-starlink-body);
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     color: #475569;
     text-decoration: none;
     transition: all 0.2s;
 }
 
 .footer-links-list li a:hover {
-    color: #000000;
-    text-decoration: underline;
+    color: #0f172a;
 }
 
 .footer-links-list li span {
@@ -3811,7 +3821,7 @@ body.theme-light {
 }
 
 .footer-comp-info {
-    font-family: var(--font-spacex-body);
+    font-family: var(--font-starlink-body);
     font-size: 13px;
     line-height: 1.6;
     color: #475569;
@@ -3822,16 +3832,16 @@ body.theme-light {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-family: var(--font-spacex-mono);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 1px;
+    font-family: var(--font-starlink-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
-    color: #0f172a;
-    background: #ffffff;
-    border: 1px solid #0f172a;
+    color: #334155;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     padding: 4px 12px;
-    border-radius: 0px;
+    border-radius: 9999px;
 }
 
 .footer-bottom-bar {
@@ -3839,9 +3849,9 @@ body.theme-light {
     align-items: center;
     justify-content: space-between;
     padding-top: 24px;
-    font-family: var(--font-spacex-mono);
+    font-family: var(--font-starlink-mono);
     font-size: 11px;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     color: #64748b;
     flex-wrap: wrap;
     gap: 12px;
