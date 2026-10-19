@@ -1455,10 +1455,10 @@ function buildVehicleMarkerHtml() {
                     <circle cx="31" cy="56" r="1.5" fill="#10b981"/>
                 </svg>
             </div>
-            <div class="vehicle-floating-tag" id="vehicle-marker-tag">${label}</div>
+            <div class="vehicle-floating-tag" id="vehicle-marker-tag">KAPAL</div>
         `;
     } else if (type === 'beacon') {
-        label = 'SMART BEACON';
+        label = 'BEACON';
         innerSvg = `
             <div class="vehicle-rotator">
                 <div class="vehicle-radar-ripple"></div>
@@ -1472,10 +1472,10 @@ function buildVehicleMarkerHtml() {
                     <line x1="38" y1="23" x2="44" y2="23" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
                 </svg>
             </div>
-            <div class="vehicle-floating-tag" id="vehicle-marker-tag">${label}</div>
+            <div class="vehicle-floating-tag" id="vehicle-marker-tag">BEACON</div>
         `;
     } else {
-        label = 'TRUK REEFER';
+        label = 'TRUK';
         innerSvg = `
             <div class="vehicle-rotator" style="transform: rotate(${heading}deg);">
                 <div class="vehicle-radar-ripple"></div>
@@ -1501,7 +1501,7 @@ function buildVehicleMarkerHtml() {
                     <rect x="26" y="58" width="4" height="1.5" fill="#ef4444"/>
                 </svg>
             </div>
-            <div class="vehicle-floating-tag" id="vehicle-marker-tag">${label}</div>
+            <div class="vehicle-floating-tag" id="vehicle-marker-tag">TRUK</div>
         `;
     }
 
@@ -1640,13 +1640,13 @@ async function renderGpsView() {
 
         const isFix3D = (latest?.gps_fix_status === 'FIX_3D' || latest?.gps_fix_status === '3D_FIX');
         const fixBadgeText = isFix3D 
-            ? '● 3D Fix (Akurat)' 
-            : (hasLiveFix ? '● 2D Fix' : '○ Mencari Satelit');
+            ? '● 3D Fix' 
+            : (hasLiveFix ? '● 2D Fix' : '○ Mencari Sinyal');
         const fixBadgeClass = (isFix3D || hasLiveFix) ? 'var(--status-normal)' : '#f59e0b';
 
         const coordsText = hasLiveFix 
             ? `${latestLat.toFixed(5)}, ${latestLon.toFixed(5)}` 
-            : (hasRealGps ? `${validGpsReadings[validGpsReadings.length - 1].latitude.toFixed(5)}, ${validGpsReadings[validGpsReadings.length - 1].longitude.toFixed(5)}` : 'Mencari Sinyal Satelit (-- , --)');
+            : (hasRealGps ? `${validGpsReadings[validGpsReadings.length - 1].latitude.toFixed(5)}, ${validGpsReadings[validGpsReadings.length - 1].longitude.toFixed(5)}` : 'Mencari Sinyal');
 
         const tempVal = latest?.temperature_probe_2 !== null && latest?.temperature_probe_2 !== undefined
             ? `${Number(latest.temperature_probe_2).toFixed(1)}°C (Inti)`
@@ -1655,16 +1655,16 @@ async function renderGpsView() {
                 : '--');
 
         const pointCountText = hasRealGps 
-            ? `${validGpsReadings.length} Titik Riil (Live GPS)` 
-            : '0 Titik (Menunggu Sinyal Satelit)';
+            ? `${validGpsReadings.length} Titik` 
+            : '0 Titik';
 
         el.contentBody.innerHTML = `
             <div class="panel">
                 <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
                     <div>
-                        <h2 class="panel-title">${icons.map} Peta Pelacakan Rute & Posisi GPS Live</h2>
+                        <h2 class="panel-title">${icons.map} Peta Pelayaran & GPS</h2>
                         <span style="font-size: 12px; color: var(--text-muted)">
-                            ${hasRealGps ? 'Pelacakan Kontinu Armada Real-Time Tanpa Refresh • Unit ' + state.selectedDeviceId : 'Menunggu Koordinat Satelit GPS dari Unit ' + state.selectedDeviceId}
+                            ${hasRealGps ? 'Monitoring Rute Armada • Unit ' + state.selectedDeviceId : 'Menunggu Sinyal Satelit GPS • Unit ' + state.selectedDeviceId}
                         </span>
                     </div>
 
@@ -1673,13 +1673,13 @@ async function renderGpsView() {
                         <!-- Pemilih Ikon Kendaraan -->
                         <div class="vehicle-selector-group" title="Pilih bentuk representasi armada">
                             <button class="vehicle-btn ${gpsLive.vehicleType === 'truck' ? 'active' : ''}" data-vehicle="truck">
-                                ${icons.truck} Truk Reefer
+                                ${icons.truck} Truk
                             </button>
                             <button class="vehicle-btn ${gpsLive.vehicleType === 'ship' ? 'active' : ''}" data-vehicle="ship">
-                                ${icons.ship} Kapal Kargo
+                                ${icons.ship} Kapal
                             </button>
                             <button class="vehicle-btn ${gpsLive.vehicleType === 'beacon' ? 'active' : ''}" data-vehicle="beacon">
-                                ${icons.mapPin} Pin Beacon
+                                ${icons.mapPin} Pin
                             </button>
                         </div>
 
@@ -1692,13 +1692,13 @@ async function renderGpsView() {
                         </div>
 
                         <!-- Auto-Follow Camera Toggle -->
-                        <button class="btn btn-secondary btn-sm ${gpsLive.autoFollow ? 'btn-primary' : ''}" id="btn-toggle-autofollow" title="Kamera otomatis mengikuti posisi armada layaknya aplikasi ride-hailing">
+                        <button class="btn btn-secondary btn-sm ${gpsLive.autoFollow ? 'btn-primary' : ''}" id="btn-toggle-autofollow" title="Kamera otomatis mengikuti posisi armada">
                             ${icons.compass} <span id="autofollow-text">${gpsLive.autoFollow ? 'Ikuti: ON' : 'Ikuti: OFF'}</span>
                         </button>
 
                         <!-- Live Demo Simulation Toggle -->
-                        <button class="btn btn-secondary btn-sm" id="btn-toggle-simulation" title="Uji animasi pergerakan mulus ala Gojek/Grab secara langsung" style="border-color: #f59e0b; color: #b45309; font-weight: 600;">
-                            <span id="sim-icon">🚀</span> <span id="sim-text">Live Demo Gerak</span>
+                        <button class="btn btn-secondary btn-sm" id="btn-toggle-simulation" title="Uji animasi pergerakan rute secara langsung" style="border-color: #f59e0b; color: #b45309; font-weight: 600;">
+                            <span id="sim-icon">🚀</span> <span id="sim-text">Demo Rute</span>
                         </button>
 
                         <button class="btn btn-secondary btn-sm" id="btn-recenter-map" title="Pusatkan kamera ke lokasi armada saat ini">
@@ -1737,7 +1737,7 @@ async function renderGpsView() {
                         <div class="map-hud-left">
                             <div class="map-hud-pill ${hasLiveFix ? 'live-active' : ''}" id="map-live-pill">
                                 <span class="map-live-dot" id="map-live-dot"></span>
-                                <span id="map-live-title">${hasLiveFix ? 'LIVE GPS ACTIVE' : 'GPS STANDBY (MENUNGGU FIX)'}</span>
+                                <span id="map-live-title">${hasLiveFix ? 'GPS AKTIF' : 'MENCARI SINYAL'}</span>
                             </div>
                             <div class="map-hud-chip">
                                 KECEPATAN: <strong id="hud-speed-val">0.0 km/h</strong>
@@ -1751,7 +1751,7 @@ async function renderGpsView() {
                                 SUHU INTI: <strong id="hud-temp-val" style="color: #10b981;">${tempVal}</strong>
                             </div>
                             <div class="map-hud-chip" id="hud-mode-chip">
-                                MODA: <strong id="hud-mode-val">${gpsLive.vehicleType === 'ship' ? 'KAPAL KARGO' : (gpsLive.vehicleType === 'beacon' ? 'BEACON' : 'TRUK REEFER')}</strong>
+                                MODA: <strong id="hud-mode-val">${gpsLive.vehicleType === 'ship' ? 'KAPAL' : (gpsLive.vehicleType === 'beacon' ? 'BEACON' : 'TRUK')}</strong>
                             </div>
                         </div>
                     </div>
@@ -1764,7 +1764,7 @@ async function renderGpsView() {
                         <strong class="mono-cell" id="gps-stat-coords" style="color: var(--ice-blue);">${coordsText}</strong>
                     </div>
                     <div>
-                        <span style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 2px;">STATUS SATELIT GPS</span>
+                        <span style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 2px;">STATUS GPS</span>
                         <strong id="gps-stat-status" style="color: ${fixBadgeClass}; display: inline-flex; align-items: center; gap: 4px;">${fixBadgeText}</strong>
                     </div>
                     <div>
@@ -1772,16 +1772,15 @@ async function renderGpsView() {
                         <strong id="gps-stat-temp" style="color: #10b981;">${tempVal}</strong>
                     </div>
                     <div>
-                        <span style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 2px;">TOTAL TITIK LACAK RIIL</span>
+                        <span style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 2px;">TOTAL TITIK LACAK</span>
                         <strong id="gps-stat-points">${pointCountText}</strong>
                     </div>
                 </div>
 
                 <div style="margin-top: 12px; display: flex; gap: 20px; font-size: 12px; color: var(--text-secondary); align-items: center; flex-wrap: wrap;">
-                    <div><span style="color: #10b981; font-size: 16px;">●</span> Normal (Sesuai Batas Regulasi)</div>
-                    <div><span style="color: #ef4444; font-size: 16px;">●</span> Melebihi Batas / Excursion</div>
-                    <div style="display: inline-flex; align-items: center; gap: 4px;"><span style="color: var(--primary-blue); display: inline-flex;">${icons.mapPin}</span> Posisi Terkini Q-GUARD (Live Interpolated)</div>
-                    <div style="margin-left: auto; color: var(--text-muted); font-size: 11px;">Sinkronisasi Realtime Otomatis Tiap 3.5 Detik Tanpa Refresh</div>
+                    <div><span style="color: #10b981; font-size: 16px;">●</span> Normal</div>
+                    <div><span style="color: #ef4444; font-size: 16px;">●</span> Penyimpangan Suhu</div>
+                    <div style="display: inline-flex; align-items: center; gap: 4px;"><span style="color: var(--primary-blue); display: inline-flex;">${icons.mapPin}</span> Posisi Terkini</div>
                 </div>
             </div>
         `;
@@ -1803,9 +1802,9 @@ async function renderGpsView() {
                 updateVehicleMarkerIcon();
                 const hudModeVal = document.getElementById('hud-mode-val');
                 if (hudModeVal) {
-                    hudModeVal.innerText = vType === 'ship' ? 'KAPAL KARGO' : (vType === 'beacon' ? 'BEACON' : 'TRUK REEFER');
+                    hudModeVal.innerText = vType === 'ship' ? 'KAPAL' : (vType === 'beacon' ? 'BEACON' : 'TRUK');
                 }
-                showToast(`Ikon kendaraan diubah ke: ${vType === 'ship' ? 'Kapal Kargo' : (vType === 'beacon' ? 'Pin Beacon' : 'Truk Reefer')}`, 'info');
+                showToast(`Ikon armada: ${vType === 'ship' ? 'Kapal' : (vType === 'beacon' ? 'Pin' : 'Truk')}`, 'info');
             });
         });
 
@@ -1816,7 +1815,7 @@ async function renderGpsView() {
             gpsLive.autoFollow = !gpsLive.autoFollow;
             btnAutoFollow.classList.toggle('btn-primary', gpsLive.autoFollow);
             if (autoFollowText) autoFollowText.innerText = gpsLive.autoFollow ? 'Ikuti: ON' : 'Ikuti: OFF';
-            showToast(`Mode kamera ikuti kendaraan: ${gpsLive.autoFollow ? 'AKTIF' : 'NONAKTIF'}`, 'info');
+            showToast(`Mode ikuti armada: ${gpsLive.autoFollow ? 'ON' : 'OFF'}`, 'info');
         });
 
         // Pasang Event Listener Live Demo Simulation
@@ -2048,7 +2047,7 @@ function startGpsLiveTracking() {
                 const isMoved = !prev || Math.abs(prev[0] - newLat) > 0.00002 || Math.abs(prev[1] - newLon) > 0.00002;
 
                 const is3D = (latest.gps_fix_status === 'FIX_3D' || latest.gps_fix_status === '3D_FIX');
-                const fixText = is3D ? '● 3D Fix (Akurat)' : '● 2D Fix';
+                const fixText = is3D ? '3D Fix' : '2D Fix';
                 const temp = latest.temperature_probe_2 !== null ? Number(latest.temperature_probe_2) : (latest.temperature_probe_1 !== null ? Number(latest.temperature_probe_1) : null);
 
                 if (isMoved && prev) {
@@ -2068,7 +2067,7 @@ function startGpsLiveTracking() {
                 const liveTitle = document.getElementById('map-live-title');
                 if (livePill) livePill.className = 'map-hud-pill live-active';
                 if (liveDot) liveDot.className = 'map-live-dot';
-                if (liveTitle) liveTitle.innerText = 'LIVE GPS ACTIVE • 4G CONNECTED';
+                if (liveTitle) liveTitle.innerText = 'GPS AKTIF';
             }
         } catch (_) {}
     }, 3500);
@@ -2111,12 +2110,12 @@ function toggleGpsSimulation() {
             btnSim.style.color = '#b45309';
         }
         if (simIcon) simIcon.innerText = '🚀';
-        if (simText) simText.innerText = 'Live Demo Gerak';
+        if (simText) simText.innerText = 'Demo Rute';
         if (livePill) livePill.className = 'map-hud-pill';
         if (liveDot) liveDot.className = 'map-live-dot';
-        if (liveTitle) liveTitle.innerText = 'LIVE GPS ACTIVE (DEVICE MODE)';
+        if (liveTitle) liveTitle.innerText = 'GPS AKTIF';
 
-        showToast('Simulasi gerak dinonaktifkan. Kembali ke data perangkat.', 'info');
+        showToast('Demo simulasi dinonaktifkan', 'info');
     } else {
         // Nyalakan simulasi
         gpsLive.isSimulating = true;
@@ -2141,9 +2140,9 @@ function toggleGpsSimulation() {
         if (simText) simText.innerText = 'Hentikan Demo';
         if (livePill) livePill.className = 'map-hud-pill live-sim';
         if (liveDot) liveDot.className = 'map-live-dot sim-dot';
-        if (liveTitle) liveTitle.innerText = 'SIMULASI LIVE GERAK (DEMO REALTIME)';
+        if (liveTitle) liveTitle.innerText = 'MODE SIMULASI';
 
-        showToast('Simulasi Live Gerak AKTIF! Kendaraan meluncur mulus waypoint demi waypoint.', 'success');
+        showToast('Demo rute simulasi aktif', 'success');
 
         // Step generator simulasi tiap 2.6 detik
         gpsLive.simTimer = setInterval(() => {
