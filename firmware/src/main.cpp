@@ -7,6 +7,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <SPI.h>
+#include <esp_task_wdt.h>
 
 #include "config.h"
 #include "SensorManager.h"
@@ -141,6 +142,20 @@ void setup() {
     if (cfg.serverUrl.length() > 0) {
         syncMgr.begin(cfg.serverUrl, cfg.apiKey);
     }
+    
+    // Enable Task Watchdog Timer (30s)
+#if defined(ESP_IDF_VERSION_MAJOR) && ESP_IDF_VERSION_MAJOR >= 5
+    esp_task_wdt_config_t twdt_config = {
+        .timeout_ms = WATCHDOG_TIMEOUT_S * 1000,
+        .idle_core_mask = 0,
+        .trigger_panic = true
+    };
+    esp_task_wdt_init(&twdt_config);
+#else
+    esp_task_wdt_init(WATCHDOG_TIMEOUT_S, true);
+#endif
+    esp_task_wdt_add(NULL);
+    Serial.printf("[Main] Watchdog enabled (%ds timeout)\n", WATCHDOG_TIMEOUT_S);
     
     systemReady = true;
     
@@ -285,6 +300,9 @@ void loop() {
             while (digitalRead(PIN_BUTTON_3) == LOW) { delay(10); }
         }
     }
+    
+    // Feed watchdog — must happen every loop iteration
+    esp_task_wdt_reset();
     
     // Small yield for WiFi stack
     delay(1);

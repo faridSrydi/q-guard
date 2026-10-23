@@ -122,14 +122,16 @@ router.post('/batch', optionalAuth, (req, res) => {
                     insertedCount++;
                     const readingId = result.lastInsertRowid;
 
-                    // Automatic risk checks
+                    // Automatic risk checks: Tri-probe thermal monitoring
                     const t1 = readingParams.temperature_probe_1;
+                    const t3 = readingParams.temperature_probe_3;
+
                     if (t1 !== null) {
                         if (t1 > tempMax) {
                             insertRiskEvent.run(
                                 device_id, readingParams.shipment_id,
                                 'TEMPERATURE_HIGH', 'CRITICAL', 'CRITICAL', 85,
-                                `Temperature excursion high: ${t1.toFixed(1)}°C (threshold: ${tempMax}°C)`,
+                                `Temperature excursion high (Core Probe 1): ${t1.toFixed(1)}°C (threshold: ${tempMax}°C)`,
                                 readingId, now
                             );
                             generatedAlerts++;
@@ -144,16 +146,28 @@ router.post('/batch', optionalAuth, (req, res) => {
                         }
                     }
 
-                    // Shock detection
+                    // Early warning: Door boundary probe (Probe 3) warming before core probe (Probe 1)
+                    if (t3 !== null && t3 > tempMax && (t1 === null || t1 <= tempMax)) {
+                        insertRiskEvent.run(
+                            device_id, readingParams.shipment_id,
+                            'BOUNDARY_WARMING', 'WARNING', 'CAUTION', 45,
+                            `Early warning - Door boundary infiltration: ${t3.toFixed(1)}°C (threshold: ${tempMax}°C, Core: ${t1 !== null ? t1.toFixed(1) + '°C' : '--'})`,
+                            readingId, now
+                        );
+                        generatedAlerts++;
+                    }
+
+                    // Shock detection: resultant minus 1g baseline gravity (net dynamic shock)
                     const ax = readingParams.acceleration_x || 0;
                     const ay = readingParams.acceleration_y || 0;
                     const az = readingParams.acceleration_z || 0;
                     const totalG = Math.sqrt(ax * ax + ay * ay + az * az);
-                    if (totalG > shockThreshold) {
+                    const netShock = Math.abs(totalG - 1.0);
+                    if (netShock > shockThreshold) {
                         insertRiskEvent.run(
                             device_id, readingParams.shipment_id,
                             'SHOCK_EXCESSIVE', 'WARNING', 'WARNING', 55,
-                            `Excessive shock/vibration detected: ${totalG.toFixed(2)}g (threshold: ${shockThreshold}g)`,
+                            `Excessive shock/vibration detected: ${netShock.toFixed(2)}g (net dynamic, threshold: ${shockThreshold}g)`,
                             readingId, now
                         );
                         generatedAlerts++;
@@ -187,13 +201,33 @@ router.post('/batch', optionalAuth, (req, res) => {
 
         logger.info(`Batch from ${device_id}: ${insertedCount} inserted, ${duplicateCount} duplicate, ${generatedAlerts} alerts`);
 
+        // Retrieve active shipment profile for two-way sync to device
+        const activeShipment = db.prepare(`
+            SELECT id, commodity, temp_min, temp_max, shock_threshold_g 
+            FROM shipments 
+            WHERE device_id = ? AND status = 'active' 
+            ORDER BY created_at DESC LIMIT 1
+        `).get(device_id) || db.prepare(`
+            SELECT id, commodity, temp_min, temp_max, shock_threshold_g 
+            FROM shipments 
+            WHERE status = 'active' 
+            ORDER BY created_at DESC LIMIT 1
+        `).get();
+
         res.status(201).json({
             status: 'success',
             device_id,
             received: readings.length,
             accepted: insertedCount,
             duplicates: duplicateCount,
-            alerts_generated: generatedAlerts
+            alerts_generated: generatedAlerts,
+            active_shipment: activeShipment ? {
+                id: activeShipment.id,
+                commodity: activeShipment.commodity,
+                temp_min: activeShipment.temp_min,
+                temp_max: activeShipment.temp_max,
+                shock_threshold_g: activeShipment.shock_threshold_g !== undefined ? activeShipment.shock_threshold_g : shockThreshold
+            } : null
         });
     } catch (err) {
         logger.error(`Error processing batch upload: ${err.message}`);

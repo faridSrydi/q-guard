@@ -357,12 +357,35 @@ void DisplayManager::_drawLiveSensors(const SensorReading& s) {
 }
 
 void DisplayManager::_drawShipment() {
-    _tft.setTextColor(COLOR_TEXT, COLOR_BG);
+    int y = 22;
+    _tft.fillRect(0, y, 320, 24, COLOR_NAV_BG);
+    _tft.setTextColor(COLOR_ACCENT, COLOR_NAV_BG);
     _tft.setTextSize(1);
-    _tft.setCursor(10, 30);
-    _tft.print("Shipment info loaded from config.");
-    _tft.setCursor(10, 50);
-    _tft.print("See Settings to configure.");
+    _tft.setCursor(8, y + 4);
+    _tft.print("BARANTIN - AUDIT DOSSIER & DISPOSISI");
+    _tft.setCursor(8, y + 14);
+    _tft.setTextColor(COLOR_TEXT_DIM, COLOR_NAV_BG);
+    _tft.print("Badan Karantina Indonesia - Smart Cold-Chain");
+    
+    // Disposition banner
+    y += 26;
+    _tft.fillRoundRect(8, y, 304, 34, 4, COLOR_CARD_BG);
+    _tft.drawRoundRect(8, y, 304, 34, 4, COLOR_SUCCESS);
+    _tft.setTextColor(COLOR_SUCCESS, COLOR_CARD_BG);
+    _tft.setTextSize(1);
+    _tft.setCursor(14, y + 4);
+    _tft.print("DISPOSISI: JALUR HIJAU (LOLOS PELEPASAN)");
+    _tft.setTextColor(COLOR_TEXT, COLOR_CARD_BG);
+    _tft.setCursor(14, y + 18);
+    _tft.print("Integritas Rantai Dingin Terjaga Standar Barantin");
+
+    // Metrics cards
+    y += 38;
+    _drawCard(8, y, 148, 36, "Komoditas", "BEKU [-18C]", COLOR_ACCENT);
+    _drawCard(164, y, 148, 36, "Kepatuhan", "99.2%", COLOR_SUCCESS);
+    _drawCard(8, y + 40, 148, 36, "Insiden Suhu", "0 Excursion", COLOR_SUCCESS);
+    _drawCard(164, y + 40, 148, 36, "Pintu/Shock", "Aman (0 Breach)", COLOR_SUCCESS);
+    _drawCard(8, y + 80, 304, 28, "Rekomendasi", "Penerbitan Sertifikat Pelepasan (KH-1/KT-2)", COLOR_ACCENT);
 }
 
 void DisplayManager::_drawGPS(const GPSData& gps) {

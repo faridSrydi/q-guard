@@ -248,7 +248,7 @@ RiskLevel RiskEngine::_scoreToLevel(int score, float completeness) {
     if (score >= 60) return RISK_CRITICAL;
     if (score >= 40) return RISK_HIGH;
     if (score >= 15) return RISK_WARNING;
-    if (score == 0 && completeness >= 0.5f) return RISK_NORMAL;
+    if (completeness >= 0.5f) return RISK_NORMAL;
     
     return RISK_UNKNOWN;
 }

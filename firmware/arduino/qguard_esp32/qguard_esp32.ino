@@ -41,6 +41,7 @@
 #include <Adafruit_BME280.h>
 #include <RTClib.h>
 #include <TinyGPSPlus.h>
+#include <esp_task_wdt.h>
 
 // ============================================================================
 // 1. PIN DEFINITIONS (SESUAI WIRING_HARDWARE_FINAL.md)
@@ -118,9 +119,10 @@ enum CommodityProfile {
   PROFILE_FROZEN_CARGO    // Daging/Ikan Beku: -25.0°C s/d -18.0°C
 };
 
-CommodityProfile currentProfile = PROFILE_FISH_FRESH;
-float thresholdMin = 0.0;
-float thresholdMax = 4.0;
+CommodityProfile currentProfile = PROFILE_FROZEN_CARGO; // Standar Paper QIC 2026: Komoditas Hayati Beku (-25 s/d -18C)
+float thresholdMin = -25.0;
+float thresholdMax = -18.0;
+String activeCommodityName = "BEKU [-18C]";
 
 // Halaman Layar (UI State)
 enum ScreenState {
@@ -129,18 +131,19 @@ enum ScreenState {
   SCREEN_MENU,
   SCREEN_PROFILE_SELECT,
   SCREEN_GRAPH,
+  SCREEN_DOSSIER,         // Ringkasan Karantina & Disposisi Jalur Hijau/Kuning/Merah
   SCREEN_SD_INFO,
   SCREEN_WIFI_CONFIG
 };
 
 ScreenState currentScreen = SCREEN_SPLASH;
-int menuCursor = 0; // Pilihan menu aktif (0..4)
+int menuCursor = 0; // Pilihan menu aktif (0..5)
 
 // Data Telemetri Terkini
 struct TelemetryData {
-  float temp1;            // Probe T1 (Atas / Permukaan Es)
-  float temp2;            // Probe T2 (Inti Daging Ikan / Sampel)
-  float temp3;            // Probe T3 (Zona Bukaan Pintu)
+  float temp1;            // Probe T1 (Inti Komoditas / Daging Ikan)
+  float temp2;            // Probe T2 (Thermal Buffer / Lapisan Es Tengah)
+  float temp3;            // Probe T3 (Zona Bukaan Pintu / Ambang Gasket)
   float mkt;              // Mean Kinetic Temperature (°C)
   float ambientTemp;      // BME280 Suhu Luar
   float ambientHum;       // BME280 Kelembapan Luar (%RH)
@@ -165,9 +168,43 @@ struct TelemetryData {
 
 TelemetryData telemetry;
 
+// Metrik Audit Perjalanan Karantina (Quarantine Trip Dossier)
+struct TripAuditMetrics {
+  unsigned long tripStartTime;       // Waktu trip dimulai (millis)
+  unsigned long totalSamples;        // Jumlah total sampel
+  unsigned long compliantSamples;    // Jumlah sampel aman dalam rentang suhu
+  float minTemp;                     // Suhu core terendah yang pernah dialami
+  float maxTemp;                     // Suhu core tertinggi yang pernah dialami
+  double sumTemp;                    // Total akumulasi suhu untuk rata-rata
+  int excursionCount;                // Jumlah insiden suhu melanggar batas
+  unsigned long totalExcursionSec;   // Total detik suhu melanggar batas
+  bool inExcursion;                  // Status pelanggaran saat ini
+  int doorBreachCount;               // Frekuensi pintu dibuka
+  float peakShockG;                  // Guncangan puncak yang terekam
+  bool hasData;                      // Status ketersediaan data fisik
+};
+
+TripAuditMetrics tripMetrics = { 0, 0, 0, 999.0f, -999.0f, 0.0, 0, 0, false, 0, 0.0f, false };
+
+void resetTripMetrics() {
+  tripMetrics.tripStartTime = millis();
+  tripMetrics.totalSamples = 0;
+  tripMetrics.compliantSamples = 0;
+  tripMetrics.minTemp = 999.0f;
+  tripMetrics.maxTemp = -999.0f;
+  tripMetrics.sumTemp = 0.0;
+  tripMetrics.excursionCount = 0;
+  tripMetrics.totalExcursionSec = 0;
+  tripMetrics.inExcursion = false;
+  tripMetrics.doorBreachCount = 0;
+  tripMetrics.peakShockG = 0.0f;
+  tripMetrics.hasData = false;
+  Serial.println(F("[TRIP AUDIT] Metrik Karantina berhasil di-reset untuk pengawasan trip baru!"));
+}
+
 // Buffer Riwayat Suhu untuk Grafik Mini (30 Sampel Terakhir)
 #define GRAPH_HISTORY_SIZE 30
-float temp2History[GRAPH_HISTORY_SIZE];
+float temp1History[GRAPH_HISTORY_SIZE];
 int historyIndex = 0;
 
 // Penanda Waktu (Non-blocking Timers)
@@ -211,6 +248,22 @@ String deviceId = "QGUARD-001";
 
 unsigned long lastWifiSendTime = 0;
 unsigned long wifiConnectStartTime = 0;
+
+// Forward Function Prototypes
+void drawMainMonitorScreen();
+void updateMainMonitorData();
+void drawMenuScreen();
+void drawProfileSelectScreen();
+void drawGraphScreen();
+void drawDossierScreen();
+void drawSdInfoScreen();
+void drawWifiConfigScreen();
+void startWiFiPortal();
+void connectToStation(const String& ssid, const String& pass);
+void sendTelemetryToBackend();
+void evaluateRiskScore();
+void readSensors();
+void logDataToSD();
 
 // ============================================================================
 // 5. HELPER NADA BUZZER & FEEDBACK AUDIO
@@ -301,6 +354,20 @@ void setupHardwarePins() {
 #endif
 
   pinMode(PIN_DOOR_SENSOR, INPUT);
+  // Self-test deteksi floating pin GPIO35 (memastikan resistor pull-up 4.7k/10k terpasang)
+  int doorTransitions = 0;
+  int lastVal = digitalRead(PIN_DOOR_SENSOR);
+  for (int i = 0; i < 15; i++) {
+    delayMicroseconds(50);
+    int curVal = digitalRead(PIN_DOOR_SENSOR);
+    if (curVal != lastVal) {
+      doorTransitions++;
+      lastVal = curVal;
+    }
+  }
+  if (doorTransitions >= 5) {
+    Serial.println(F("[DOOR] PERINGATAN: GPIO35 melayang (floating)! Pastikan resistor pull-up 4.7k/10k terhubung ke 3.3V."));
+  }
 
   pinMode(PIN_LED_RED, OUTPUT);
   pinMode(PIN_LED_YELLOW, OUTPUT);
@@ -545,8 +612,8 @@ void evaluateRiskScore() {
   int shockScore = 0;
   int doorScore = 0;
 
-  // 1. Evaluasi Suhu terhadap Profil Komoditas Terpilih (Gunakan probe aktif riil)
-  float coreTemp = !isnan(telemetry.temp2) ? telemetry.temp2 : (!isnan(telemetry.temp1) ? telemetry.temp1 : (!isnan(telemetry.temp3) ? telemetry.temp3 : NAN));
+  // 1. Evaluasi Suhu terhadap Profil Komoditas Terpilih (Gunakan probe inti riil T1)
+  float coreTemp = !isnan(telemetry.temp1) ? telemetry.temp1 : (!isnan(telemetry.temp2) ? telemetry.temp2 : (!isnan(telemetry.temp3) ? telemetry.temp3 : NAN));
   if (!isnan(coreTemp)) {
     if (coreTemp > thresholdMax) {
       float diff = coreTemp - thresholdMax;
@@ -560,11 +627,17 @@ void evaluateRiskScore() {
     }
   }
 
-  // 2. Evaluasi Guncangan (Shock Impact)
-  if (telemetry.gForce > 2.5) {
+  // 1B. Peringatan Dini Penetrasi Kalor Pintu (Probe T3) sebelum merambat ke inti (T1)
+  if (!isnan(telemetry.temp3) && telemetry.temp3 > thresholdMax && (isnan(coreTemp) || coreTemp <= thresholdMax)) {
+    if (tempScore < 35) tempScore = 35; // Peringatan dini batas pintu
+  }
+
+  // 2. Evaluasi Guncangan Dinamis Bersih (Net Dynamic G-Force minus 1g gravitasi)
+  float netShock = fabsf(telemetry.gForce - 1.0f);
+  if (netShock > 1.5f || telemetry.gForce > 2.5f) {
     shockScore = 80;
     telemetry.shockDetected = true;
-  } else if (telemetry.gForce > 1.8) {
+  } else if (netShock > 0.8f || telemetry.gForce > 1.8f) {
     shockScore = 40;
   }
 
@@ -613,15 +686,41 @@ void readSensors() {
   float t3 = dsSensors.getTempCByIndex(2);
   dsSensors.requestTemperatures(); // Minta konversi untuk siklus berikutnya tanpa blocking
 
-  // Validasi pembacaan probe riil murni (nilai error bus -127.0 atau lepas dijadikan NAN, tanpa duplikasi palsu)
-  telemetry.temp1 = (t1 > -55.0 && t1 < 125.0) ? t1 : NAN;
-  telemetry.temp2 = (t2 > -55.0 && t2 < 125.0) ? t2 : NAN;
-  telemetry.temp3 = (t3 > -55.0 && t3 < 125.0) ? t3 : NAN;
+  // Validasi pembacaan probe riil murni (abaikan error -127.0 dan nilai reset power-on 85.0)
+  telemetry.temp1 = (t1 > -55.0 && t1 < 125.0 && t1 != 85.0f) ? t1 : NAN;
+  telemetry.temp2 = (t2 > -55.0 && t2 < 125.0 && t2 != 85.0f) ? t2 : NAN;
+  telemetry.temp3 = (t3 > -55.0 && t3 < 125.0 && t3 != 85.0f) ? t3 : NAN;
 
-  // Catat riwayat untuk grafik LCD dari probe yang aktif
-  float activeCore = !isnan(telemetry.temp2) ? telemetry.temp2 : (!isnan(telemetry.temp1) ? telemetry.temp1 : (!isnan(telemetry.temp3) ? telemetry.temp3 : 0.0));
-  temp2History[historyIndex] = activeCore;
+  // Catat riwayat untuk grafik LCD dari probe inti (T1)
+  float activeCore = !isnan(telemetry.temp1) ? telemetry.temp1 : (!isnan(telemetry.temp2) ? telemetry.temp2 : (!isnan(telemetry.temp3) ? telemetry.temp3 : 0.0));
+  temp1History[historyIndex] = activeCore;
   historyIndex = (historyIndex + 1) % GRAPH_HISTORY_SIZE;
+
+  // Akumulasi Metrik Audit Karantina secara real-time dari data fisik murni (Probe T1 Inti)
+  float validCore = !isnan(telemetry.temp1) ? telemetry.temp1 : (!isnan(telemetry.temp2) ? telemetry.temp2 : (!isnan(telemetry.temp3) ? telemetry.temp3 : NAN));
+  if (!isnan(validCore)) {
+    if (!tripMetrics.hasData) {
+      tripMetrics.tripStartTime = millis();
+      tripMetrics.minTemp = validCore;
+      tripMetrics.maxTemp = validCore;
+      tripMetrics.hasData = true;
+    }
+    if (validCore < tripMetrics.minTemp) tripMetrics.minTemp = validCore;
+    if (validCore > tripMetrics.maxTemp) tripMetrics.maxTemp = validCore;
+    tripMetrics.sumTemp += validCore;
+    tripMetrics.totalSamples++;
+
+    if (validCore >= thresholdMin && validCore <= thresholdMax) {
+      tripMetrics.compliantSamples++;
+      tripMetrics.inExcursion = false;
+    } else {
+      tripMetrics.totalExcursionSec++;
+      if (!tripMetrics.inExcursion) {
+        tripMetrics.excursionCount++;
+        tripMetrics.inExcursion = true;
+      }
+    }
+  }
 
   // 2. Hitung MKT murni dari probe yang valid
   telemetry.mkt = calculateMKT(telemetry.temp1, telemetry.temp2, telemetry.temp3);
@@ -641,6 +740,7 @@ void readSensors() {
   if (doorStateNow && !telemetry.doorOpen) {
     // Baru saja dibuka
     telemetry.doorOpenStart = millis();
+    tripMetrics.doorBreachCount++;
     beepTouch();
   } else if (!doorStateNow && telemetry.doorOpen) {
     // Baru saja ditutup
@@ -657,6 +757,9 @@ void readSensors() {
     }
   } else {
     telemetry.gForce = 1.0;
+  }
+  if (telemetry.gForce > tripMetrics.peakShockG) {
+    tripMetrics.peakShockG = telemetry.gForce;
   }
   peakGForceBuffer = 1.0; // Reset untuk siklus detik berikutnya
 
@@ -747,7 +850,7 @@ void logDataToSD() {
     }
     dataFile.print(telemetry.riskScore); dataFile.print(",");
     dataFile.println(telemetry.riskLevel);
-
+    dataFile.flush();
     dataFile.close();
     telemetry.logCount++;
   }
@@ -762,12 +865,29 @@ void loadWifiPreferences() {
   wifiPass = preferences.getString("pass", "");
   serverUrl = preferences.getString("url", "http://192.168.43.15:3000/api/sensor-data/batch");
   deviceId = preferences.getString("devid", "QGUARD-001");
+  int savedProf = preferences.getInt("prof", (int)PROFILE_FROZEN_CARGO);
+  activeCommodityName = preferences.getString("c_name", "BEKU [-18C]");
+  float cMin = preferences.getFloat("c_min", -999.0f);
+  float cMax = preferences.getFloat("c_max", -999.0f);
   preferences.end();
 
-  Serial.println(F("[PREFS] Konfigurasi Wi-Fi & Cloud termuat:"));
-  Serial.printf("  SSID   : %s\n", wifiSsid.length() > 0 ? wifiSsid.c_str() : "(Belum diatur)");
-  Serial.printf("  Server : %s\n", serverUrl.c_str());
-  Serial.printf("  Device : %s\n", deviceId.c_str());
+  if (cMin > -100.0f && cMax > -100.0f) {
+    thresholdMin = cMin;
+    thresholdMax = cMax;
+  } else {
+    currentProfile = (CommodityProfile)savedProf;
+    if (currentProfile == PROFILE_FISH_FRESH) { thresholdMin = 0.0; thresholdMax = 4.0; activeCommodityName = "IKAN SEGAR"; }
+    else if (currentProfile == PROFILE_VACCINE_PHARMA) { thresholdMin = 2.0; thresholdMax = 8.0; activeCommodityName = "VAKSIN"; }
+    else { currentProfile = PROFILE_FROZEN_CARGO; thresholdMin = -25.0; thresholdMax = -18.0; activeCommodityName = "BEKU [-18C]"; }
+  }
+
+  Serial.println(F("[PREFS] Konfigurasi Wi-Fi, Cloud & Profil termuat:"));
+  Serial.printf("  SSID    : %s\n", wifiSsid.length() > 0 ? wifiSsid.c_str() : "(Belum diatur)");
+  Serial.printf("  Server  : %s\n", serverUrl.c_str());
+  Serial.printf("  Device  : %s\n", deviceId.c_str());
+  Serial.printf("  Profil  : %s (%.1fC s/d %.1fC)\n", 
+                currentProfile == PROFILE_FISH_FRESH ? "IKAN SEGAR" : (currentProfile == PROFILE_VACCINE_PHARMA ? "VAKSIN" : "BEKU -20C"),
+                thresholdMin, thresholdMax);
 }
 
 void saveWifiPreferences(const String& ssid, const String& pass, const String& url, const String& devid) {
@@ -1022,7 +1142,70 @@ void sendTelemetryToBackend() {
   );
 
   int httpCode = http.POST(jsonPayload);
-  if (httpCode > 0) {
+  if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED) {
+    String response = http.getString();
+    
+    // Two-Way Sync: Ambil profil komoditas aktif yang ditugaskan dari Web Dashboard Barantin
+    int shipIdx = response.indexOf("\"active_shipment\":");
+    if (shipIdx > 0 && response.indexOf("\"active_shipment\":null") < 0) {
+      int commIdx = response.indexOf("\"commodity\":\"", shipIdx);
+      if (commIdx > 0) {
+        commIdx += 13;
+        int commEnd = response.indexOf("\"", commIdx);
+        if (commEnd > commIdx) {
+          String remoteCommodity = response.substring(commIdx, commEnd);
+          
+          float remoteMin = thresholdMin;
+          int minIdx = response.indexOf("\"temp_min\":", shipIdx);
+          if (minIdx > 0) {
+            minIdx += 11;
+            int minEnd = response.indexOf(",", minIdx);
+            if (minEnd < 0) minEnd = response.indexOf("}", minIdx);
+            if (minEnd > minIdx) remoteMin = response.substring(minIdx, minEnd).toFloat();
+          }
+
+          float remoteMax = thresholdMax;
+          int maxIdx = response.indexOf("\"temp_max\":", shipIdx);
+          if (maxIdx > 0) {
+            maxIdx += 11;
+            int maxEnd = response.indexOf(",", maxIdx);
+            if (maxEnd < 0) maxEnd = response.indexOf("}", maxIdx);
+            if (maxEnd > maxIdx) remoteMax = response.substring(maxIdx, maxEnd).toFloat();
+          }
+
+          // Cek apakah ada perubahan dari Web Dashboard
+          if (remoteCommodity.length() > 0 && 
+              (remoteCommodity != activeCommodityName || abs(remoteMin - thresholdMin) > 0.05f || abs(remoteMax - thresholdMax) > 0.05f)) {
+            activeCommodityName = remoteCommodity;
+            thresholdMin = remoteMin;
+            thresholdMax = remoteMax;
+
+            Serial.println(F("\n[TWO-WAY SYNC] 🔥 TERDETEKSI TUGAS PENGAPALAN BARU DARI WEB DASHBOARD!"));
+            Serial.printf("  -> Komoditas : %s\n", activeCommodityName.c_str());
+            Serial.printf("  -> Batas Suhu: %.1f C s/d %.1f C\n", thresholdMin, thresholdMax);
+
+            beepSuccess();
+            resetTripMetrics();
+
+            // Simpan ke NVS Preferences
+            preferences.begin("qguard", false);
+            preferences.putString("c_name", activeCommodityName);
+            preferences.putFloat("c_min", thresholdMin);
+            preferences.putFloat("c_max", thresholdMax);
+            preferences.end();
+
+            // Refresh tampilan layar jika sedang di monitor
+            if (currentScreen == SCREEN_MONITOR) {
+              drawMainMonitorScreen();
+            } else if (currentScreen == SCREEN_DOSSIER) {
+              drawDossierScreen();
+            }
+          }
+        }
+      }
+    }
+    Serial.printf("[CLOUD] Terkirim ke server (%s) - HTTP %d\n", serverUrl.c_str(), httpCode);
+  } else if (httpCode > 0) {
     Serial.printf("[CLOUD] Terkirim ke server (%s) - HTTP %d\n", serverUrl.c_str(), httpCode);
   } else {
     Serial.printf("[CLOUD] Gagal kirim: %s\n", http.errorToString(httpCode).c_str());
@@ -1045,10 +1228,16 @@ void drawMainMonitorScreen() {
   tft.setCursor(8, 9);
   tft.print("Q-GUARD");
 
-  // Status Profil Komoditas Aktif
-  tft.setCursor(155, 9);
-  if (currentProfile == PROFILE_FISH_FRESH) {
-    tft.setTextColor(COLOR_CYAN);
+  // Status Profil Komoditas Aktif (Dinamis dari Web atau Preset)
+  tft.setCursor(140, 9);
+  tft.setTextColor(COLOR_CYAN);
+  if (activeCommodityName.length() > 0) {
+    String disp = activeCommodityName;
+    if (disp.length() > 10) disp = disp.substring(0, 9) + "..";
+    char profBuf[24];
+    snprintf(profBuf, sizeof(profBuf), "%s [%.0fC]", disp.c_str(), thresholdMax);
+    tft.print(profBuf);
+  } else if (currentProfile == PROFILE_FISH_FRESH) {
     tft.print("IKAN SEGAR [0-4C]");
   } else if (currentProfile == PROFILE_VACCINE_PHARMA) {
     tft.setTextColor(COLOR_GOLD);
@@ -1058,22 +1247,22 @@ void drawMainMonitorScreen() {
     tft.print("BEKU [-20C]");
   }
 
-  // --- KOTAK 1: KARTU SUHU UTAMA (T1, T2 INTI, T3) ---
+  // --- KOTAK 1: KARTU SUHU UTAMA (T1 INTI IKAN, T2 BUFFER ES, T3 PINTU) ---
   int cardY = 32;
   tft.fillRoundRect(8, cardY, 304, 78, 6, COLOR_CARD);
   tft.drawRoundRect(8, cardY, 304, 78, 6, COLOR_CARD_BORDER);
 
-  tft.setTextColor(COLOR_GRAY_TEXT);
-  tft.setTextSize(1);
-  tft.setCursor(18, cardY + 8);
-  tft.print("T1 (ATAS)");
-
-  tft.setCursor(110, cardY + 8);
   tft.setTextColor(COLOR_GOLD);
-  tft.print("T2 (INTI IKAN)");
+  tft.setTextSize(1);
+  tft.setCursor(14, cardY + 8);
+  tft.print("T1 (INTI IKAN)");
+
+  tft.setTextColor(COLOR_CYAN);
+  tft.setCursor(118, cardY + 8);
+  tft.print("T2 (BUFFER ES)");
 
   tft.setTextColor(COLOR_GRAY_TEXT);
-  tft.setCursor(235, cardY + 8);
+  tft.setCursor(232, cardY + 8);
   tft.print("T3 (PINTU)");
 
   tft.drawLine(14, cardY + 54, 300, cardY + 54, COLOR_CARD_BORDER);
@@ -1131,14 +1320,34 @@ void drawMainMonitorScreen() {
 // Update HANYA angka dan nilai dinamis (ZERO FLICKER, tidak pernah panggil fillScreen)
 void updateMainMonitorData() {
   // 1. Update Jam RTC di Baris Atas
-  tft.fillRect(70, 6, 75, 16, COLOR_NAV_BAR);
+  tft.fillRect(70, 6, 68, 16, COLOR_NAV_BAR);
   tft.setTextColor(COLOR_WHITE);
   tft.setTextSize(1);
-  tft.setCursor(75, 9);
+  tft.setCursor(72, 9);
   char clockStr[12];
   sprintf(clockStr, "%02d:%02d:%02d", 
           telemetry.timestamp.hour(), telemetry.timestamp.minute(), telemetry.timestamp.second());
   tft.print(clockStr);
+
+  // 1B. Update Label Profil Komoditas Aktif (Sinkron Real-time jika diubah dari Web)
+  tft.fillRect(140, 6, 102, 16, COLOR_NAV_BAR);
+  tft.setCursor(142, 9);
+  tft.setTextColor(COLOR_CYAN);
+  if (activeCommodityName.length() > 0) {
+    String disp = activeCommodityName;
+    if (disp.length() > 9) disp = disp.substring(0, 8) + "..";
+    char profBuf[24];
+    snprintf(profBuf, sizeof(profBuf), "%s [%.0fC]", disp.c_str(), thresholdMax);
+    tft.print(profBuf);
+  } else if (currentProfile == PROFILE_FISH_FRESH) {
+    tft.print("IKAN SEGAR");
+  } else if (currentProfile == PROFILE_VACCINE_PHARMA) {
+    tft.setTextColor(COLOR_GOLD);
+    tft.print("VAKSIN");
+  } else {
+    tft.setTextColor(0x5DFF);
+    tft.print("BEKU -18C");
+  }
 
   // 2. Status WiFi, SD & GPS
   tft.fillRect(245, 6, 73, 16, COLOR_NAV_BAR);
@@ -1165,13 +1374,32 @@ void updateMainMonitorData() {
 
   int cardY = 32;
 
-  // 3. T1 (Atas/Es)
-  tft.fillRect(16, cardY + 20, 80, 24, COLOR_CARD);
+  // 3. T1 (Inti Daging Ikan) - Primary Core Metric
+  tft.fillRect(12, cardY + 20, 98, 28, COLOR_CARD);
+  tft.setTextSize(2);
+  if (!isnan(telemetry.temp1)) {
+    if (telemetry.temp1 >= thresholdMin && telemetry.temp1 <= thresholdMax) {
+      tft.setTextColor(COLOR_GREEN_SAFE);
+    } else {
+      tft.setTextColor(COLOR_RED_ALERT);
+    }
+    tft.setCursor(14, cardY + 22);
+    tft.print(telemetry.temp1, 1);
+    tft.setTextSize(1);
+    tft.print("C");
+  } else {
+    tft.setTextColor(COLOR_GRAY_TEXT);
+    tft.setCursor(14, cardY + 22);
+    tft.print("--.-");
+  }
+
+  // 4. T2 (Thermal Buffer / Lapisan Es Tengah)
+  tft.fillRect(114, cardY + 20, 98, 28, COLOR_CARD);
   tft.setTextSize(2);
   tft.setTextColor(COLOR_WHITE);
-  tft.setCursor(18, cardY + 22);
-  if (!isnan(telemetry.temp1)) {
-    tft.print(telemetry.temp1, 1);
+  tft.setCursor(118, cardY + 22);
+  if (!isnan(telemetry.temp2)) {
+    tft.print(telemetry.temp2, 1);
     tft.setTextSize(1);
     tft.print("C");
   } else {
@@ -1179,30 +1407,11 @@ void updateMainMonitorData() {
     tft.print("--.-");
   }
 
-  // 4. T2 (Inti Daging Ikan)
-  tft.fillRect(100, cardY + 20, 115, 28, COLOR_CARD);
-  tft.setTextSize(3);
-  if (!isnan(telemetry.temp2)) {
-    if (telemetry.temp2 >= thresholdMin && telemetry.temp2 <= thresholdMax) {
-      tft.setTextColor(COLOR_GREEN_SAFE);
-    } else {
-      tft.setTextColor(COLOR_RED_ALERT);
-    }
-    tft.setCursor(105, cardY + 22);
-    tft.print(telemetry.temp2, 1);
-    tft.setTextSize(2);
-    tft.print("C");
-  } else {
-    tft.setTextColor(COLOR_GRAY_TEXT);
-    tft.setCursor(105, cardY + 22);
-    tft.print("--.-");
-  }
-
   // 5. T3 (Pintu)
-  tft.fillRect(230, cardY + 20, 75, 24, COLOR_CARD);
+  tft.fillRect(228, cardY + 20, 78, 24, COLOR_CARD);
   tft.setTextSize(2);
   tft.setTextColor(COLOR_WHITE);
-  tft.setCursor(235, cardY + 22);
+  tft.setCursor(232, cardY + 22);
   if (!isnan(telemetry.temp3)) {
     tft.print(telemetry.temp3, 1);
     tft.setTextSize(1);
@@ -1302,43 +1511,45 @@ void drawMenuScreen() {
   tft.fillScreen(COLOR_BG);
 
   // Header Menu
-  tft.fillRect(0, 0, 320, 30, COLOR_NAV_BAR);
-  tft.drawLine(0, 30, 320, 30, COLOR_CYAN);
+  tft.fillRect(0, 0, 320, 28, COLOR_NAV_BAR);
+  tft.drawLine(0, 28, 320, 28, COLOR_CYAN);
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(2);
-  tft.setCursor(12, 7);
+  tft.setCursor(12, 6);
   tft.print("PILIHAN MENU Q-GUARD");
 
   const char* menuItems[] = {
     "1. Live Telemetry Monitor",
     "2. Ganti Profil Komoditas",
     "3. Grafik Mini Tren Suhu",
-    "4. Status MicroSD & Log",
-    "5. Setup Wi-Fi & Web Portal"
+    "4. Ringkasan Karantina (Dossier)",
+    "5. Status MicroSD & Log",
+    "6. Setup Wi-Fi & Web Portal"
   };
 
-  int startY = 42;
-  int itemH = 34;
+  int startY = 34;
+  int itemH = 26;
+  int gap = 4;
 
-  for (int i = 0; i < 5; i++) {
-    int itemY = startY + (i * (itemH + 4));
+  for (int i = 0; i < 6; i++) {
+    int itemY = startY + (i * (itemH + gap));
     bool isSelected = (i == menuCursor);
 
     if (isSelected) {
-      tft.fillRoundRect(10, itemY, 300, itemH, 6, COLOR_CYAN);
+      tft.fillRoundRect(10, itemY, 300, itemH, 5, COLOR_CYAN);
       tft.setTextColor(COLOR_BG);
     } else {
-      tft.fillRoundRect(10, itemY, 300, itemH, 6, COLOR_CARD);
-      tft.drawRoundRect(10, itemY, 300, itemH, 6, COLOR_CARD_BORDER);
+      tft.fillRoundRect(10, itemY, 300, itemH, 5, COLOR_CARD);
+      tft.drawRoundRect(10, itemY, 300, itemH, 5, COLOR_CARD_BORDER);
       tft.setTextColor(COLOR_WHITE);
     }
 
     tft.setTextSize(1);
-    tft.setCursor(24, itemY + 12);
+    tft.setCursor(20, itemY + 8);
     tft.print(menuItems[i]);
 
     if (isSelected) {
-      tft.setCursor(244, itemY + 12);
+      tft.setCursor(244, itemY + 8);
       tft.print("[BUKA >]");
     }
   }
@@ -1406,7 +1617,7 @@ void drawGraphScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(1);
   tft.setCursor(10, 9);
-  tft.print("TREN SUHU INTI (T2) - 30 TITIK TERAKHIR");
+  tft.print("TREN SUHU INTI (T1) - 30 TITIK TERAKHIR");
 
   int originX = 35;
   int originY = 195;
@@ -1421,7 +1632,7 @@ void drawGraphScreen() {
   float gMin = thresholdMin - 2.0;
   float gMax = thresholdMax + 2.0;
   for (int i = 0; i < GRAPH_HISTORY_SIZE; i++) {
-    float val = temp2History[i];
+    float val = temp1History[i];
     if (!isnan(val) && val > -50.0 && val < 100.0) {
       if (val < gMin) gMin = val - 1.0;
       if (val > gMax) gMax = val + 1.0;
@@ -1451,8 +1662,8 @@ void drawGraphScreen() {
     int idx1 = (historyIndex + i) % GRAPH_HISTORY_SIZE;
     int idx2 = (historyIndex + i + 1) % GRAPH_HISTORY_SIZE;
 
-    float val1 = temp2History[idx1];
-    float val2 = temp2History[idx2];
+    float val1 = temp1History[idx1];
+    float val2 = temp1History[idx2];
     if (isnan(val1) || val1 < -50.0 || val1 > 100.0) continue;
     if (isnan(val2) || val2 < -50.0 || val2 > 100.0) continue;
 
@@ -1474,6 +1685,209 @@ void drawGraphScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setCursor(20, 222);
   tft.print("< Tekan [BACK] atau Sentuh untuk kembali");
+}
+
+// ============================================================================
+// 16B. TAMPILAN RINGKASAN AUDIT KARANTINA (QUARANTINE DOSSIER & DISPOSISI)
+// ============================================================================
+void drawDossierScreen() {
+  tft.fillScreen(COLOR_BG);
+
+  // 1. Header Bar Karantina
+  tft.fillRect(0, 0, 320, 26, COLOR_NAV_BAR);
+  tft.drawLine(0, 26, 320, 26, COLOR_CYAN);
+  tft.setTextColor(COLOR_CYAN);
+  tft.setTextSize(1);
+  tft.setCursor(8, 9);
+  tft.print("BARANTIN - AUDIT DOSSIER");
+
+  // Profil Komoditas aktif di kanan atas
+  tft.setCursor(185, 9);
+  tft.setTextColor(COLOR_GOLD);
+  if (activeCommodityName.length() > 0) {
+    String disp = activeCommodityName;
+    if (disp.length() > 10) disp = disp.substring(0, 9) + "..";
+    tft.printf("[%s]", disp.c_str());
+  } else {
+    tft.print("[BEKU -18C]");
+  }
+
+  // 2. Hitung statistik riil dari data fisik
+  float compRate = 100.0f;
+  if (tripMetrics.totalSamples > 0) {
+    compRate = ((float)tripMetrics.compliantSamples * 100.0f) / (float)tripMetrics.totalSamples;
+  }
+  float avgTemp = 0.0f;
+  if (tripMetrics.totalSamples > 0) {
+    avgTemp = (float)(tripMetrics.sumTemp / (double)tripMetrics.totalSamples);
+  }
+
+  // Tentukan Keputusan / Disposisi Jalur Karantina
+  uint16_t verdictColor = COLOR_GREEN_SAFE;
+  const char* verdictLabel = "JALUR HIJAU (LOLOS)";
+  const char* verdictDesc = "Integritas Cold-Chain Terjaga Standar Barantin";
+
+  if (tripMetrics.hasData) {
+    if (tripMetrics.maxTemp > thresholdMax + 4.0f || compRate < 80.0f) {
+      verdictColor = COLOR_RED_ALERT;
+      verdictLabel = "JALUR MERAH (TAHAN / LAB)";
+      verdictDesc = "Deviasi Kritis! Tahan Komoditas & Uji Mikrobiologi";
+    } else if (compRate < 95.0f || tripMetrics.excursionCount > 0 || tripMetrics.doorBreachCount > 3 || tripMetrics.peakShockG > 2.0f) {
+      verdictColor = COLOR_GOLD;
+      verdictLabel = "JALUR KUNING (PERIKSA FISIK)";
+      verdictDesc = "Anomali Terdeteksi. Lakukan Inspeksi Organoleptik";
+    }
+  } else {
+    verdictColor = COLOR_CYAN;
+    verdictLabel = "MEMANTAU PENGAWASAN TRIP...";
+    verdictDesc = "Menunggu akumulasi data sensor fisik masuk";
+  }
+
+  // 3. Card Keputusan Disposisi Karantina (Triage Banner)
+  int cardY = 30;
+  tft.fillRoundRect(8, cardY, 304, 46, 6, COLOR_CARD);
+  tft.drawRoundRect(8, cardY, 304, 46, 6, verdictColor);
+
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.setTextSize(1);
+  tft.setCursor(14, cardY + 6);
+  tft.print("DISPOSISI RESMI KARANTINA:");
+
+  tft.setTextSize(2);
+  tft.setTextColor(verdictColor);
+  tft.setCursor(14, cardY + 17);
+  tft.print(verdictLabel);
+
+  tft.setTextSize(1);
+  tft.setTextColor(COLOR_WHITE);
+  tft.setCursor(14, cardY + 34);
+  tft.print(verdictDesc);
+
+  // 4. Dua Kolom Ringkasan Metrik (Y: 80 to 184, H: 104)
+  int colY = 80;
+  int colW = 148;
+  int colH = 104;
+
+  // --- Kolom Kiri: STATISTIK SUHU INTI (T1) ---
+  tft.fillRoundRect(8, colY, colW, colH, 6, COLOR_CARD);
+  tft.drawRoundRect(8, colY, colW, colH, 6, COLOR_CARD_BORDER);
+
+  tft.setTextColor(COLOR_CYAN);
+  tft.setTextSize(1);
+  tft.setCursor(14, colY + 6);
+  tft.print("STATISTIK SUHU INTI (T1)");
+  tft.drawLine(14, colY + 16, 148, colY + 16, COLOR_CARD_BORDER);
+
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.setCursor(14, colY + 22);
+  tft.print("Suhu Min   : ");
+  tft.setTextColor(COLOR_WHITE);
+  if (tripMetrics.hasData && tripMetrics.minTemp < 900.0f) {
+    tft.printf("%.1f C", tripMetrics.minTemp);
+  } else {
+    tft.print("--.- C");
+  }
+
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.setCursor(14, colY + 38);
+  tft.print("Suhu Max   : ");
+  if (tripMetrics.hasData && tripMetrics.maxTemp > -900.0f) {
+    tft.setTextColor(tripMetrics.maxTemp > thresholdMax ? COLOR_RED_ALERT : COLOR_WHITE);
+    tft.printf("%.1f C", tripMetrics.maxTemp);
+  } else {
+    tft.setTextColor(COLOR_WHITE);
+    tft.print("--.- C");
+  }
+
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.setCursor(14, colY + 54);
+  tft.print("Rata-Rata  : ");
+  tft.setTextColor(COLOR_WHITE);
+  if (tripMetrics.hasData) {
+    tft.printf("%.1f C", avgTemp);
+  } else {
+    tft.print("--.- C");
+  }
+
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.setCursor(14, colY + 70);
+  tft.print("Batas Suhu : ");
+  tft.setTextColor(COLOR_GOLD);
+  tft.printf("%.0f..%.0f C", thresholdMin, thresholdMax);
+
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.setCursor(14, colY + 86);
+  tft.print("Kepatuhan  : ");
+  tft.setTextColor(compRate >= 95.0f ? COLOR_GREEN_SAFE : (compRate >= 80.0f ? COLOR_GOLD : COLOR_RED_ALERT));
+  tft.printf("%.1f%%", compRate);
+
+  // --- Kolom Kanan: INSIDEN & INTEGRITAS FISIK ---
+  tft.fillRoundRect(164, colY, colW, colH, 6, COLOR_CARD);
+  tft.drawRoundRect(164, colY, colW, colH, 6, COLOR_CARD_BORDER);
+
+  tft.setTextColor(COLOR_CYAN);
+  tft.setTextSize(1);
+  tft.setCursor(170, colY + 6);
+  tft.print("INSIDEN & FISIK");
+  tft.drawLine(170, colY + 16, 304, colY + 16, COLOR_CARD_BORDER);
+
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.setCursor(170, colY + 22);
+  tft.print("Deviasi Suhu: ");
+  tft.setTextColor(tripMetrics.excursionCount > 0 ? COLOR_RED_ALERT : COLOR_GREEN_SAFE);
+  tft.printf("%d x", tripMetrics.excursionCount);
+
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.setCursor(170, colY + 38);
+  tft.print("Durasi Dev  : ");
+  tft.setTextColor(tripMetrics.totalExcursionSec > 0 ? COLOR_RED_ALERT : COLOR_WHITE);
+  tft.printf("%lu dtk", tripMetrics.totalExcursionSec);
+
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.setCursor(170, colY + 54);
+  tft.print("Buka Pintu  : ");
+  tft.setTextColor(tripMetrics.doorBreachCount > 0 ? COLOR_GOLD : COLOR_WHITE);
+  tft.printf("%d x (%lus)", tripMetrics.doorBreachCount, telemetry.doorTotalOpenSec);
+
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.setCursor(170, colY + 70);
+  tft.print("Puncak Shock: ");
+  tft.setTextColor(tripMetrics.peakShockG > 2.0f ? COLOR_RED_ALERT : COLOR_GREEN_SAFE);
+  tft.printf("%.2f g", tripMetrics.peakShockG);
+
+  unsigned long elapsedSec = (tripMetrics.tripStartTime > 0) ? ((millis() - tripMetrics.tripStartTime) / 1000) : 0;
+  unsigned long hrs = elapsedSec / 3600;
+  unsigned long mins = (elapsedSec % 3600) / 60;
+  unsigned long secs = elapsedSec % 60;
+
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.setCursor(170, colY + 86);
+  tft.print("Durasi Trip : ");
+  tft.setTextColor(COLOR_WHITE);
+  tft.printf("%02lu:%02lu:%02lu", hrs, mins, secs);
+
+  // 5. Tombol Aksi Bawah (Y: 188 to 214, H: 26)
+  // Tombol 1: [ RESET TRIP ] (Kiri)
+  tft.fillRoundRect(8, 188, 148, 26, 6, 0x4800); // Dark reddish brown
+  tft.drawRoundRect(8, 188, 148, 26, 6, COLOR_RED_ALERT);
+  tft.setTextColor(COLOR_WHITE);
+  tft.setTextSize(1);
+  tft.setCursor(20, 196);
+  tft.print("[!] RESET TRIP BARU");
+
+  // Tombol 2: [ KEMBALI KE MENU ] (Kanan)
+  tft.fillRoundRect(164, 188, 148, 26, 6, COLOR_CARD);
+  tft.drawRoundRect(164, 188, 148, 26, 6, COLOR_CYAN);
+  tft.setTextColor(COLOR_CYAN);
+  tft.setCursor(182, 196);
+  tft.print("< KEMBALI KE MENU");
+
+  // 6. Footer (Y: 218 to 240)
+  tft.fillRect(0, 218, 320, 22, COLOR_NAV_BAR);
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.setTextSize(1);
+  tft.setCursor(10, 224);
+  tft.print("Sentuh / Tekan [CONFIRM] utk Reset, [BACK] utk Menu");
 }
 
 // ============================================================================
@@ -1678,9 +2092,12 @@ void openSelectedMenu() {
     currentScreen = SCREEN_GRAPH;
     drawGraphScreen();
   } else if (menuCursor == 3) {
+    currentScreen = SCREEN_DOSSIER;
+    drawDossierScreen();
+  } else if (menuCursor == 4) {
     currentScreen = SCREEN_SD_INFO;
     drawSdInfoScreen();
-  } else if (menuCursor == 4) {
+  } else if (menuCursor == 5) {
     currentScreen = SCREEN_WIFI_CONFIG;
     drawWifiConfigScreen();
   }
@@ -1826,10 +2243,10 @@ void handleInputs() {
 
   // --- B. KONDISI DI LAYAR MENU ---
   else if (currentScreen == SCREEN_MENU) {
-    // 1. Tombol Fisik SELECT: Geser kursor sorotan ke item berikutnya
+    // 1. Tombol Fisik SELECT: Geser kursor sorotan ke item berikutnya (0..5)
     if (btnSelectPressed) {
       beepTouch();
-      menuCursor = (menuCursor + 1) % 5;
+      menuCursor = (menuCursor + 1) % 6;
       drawMenuScreen();
       return;
     }
@@ -1876,20 +2293,22 @@ void handleInputs() {
         }
       }
 
-      // Deteksi menu yang disentuh berdasarkan batas tengah (mid-point) antar item:
-      // Item 0 (Pusat Y=59):  touchY 30 s/d 77
-      // Item 1 (Pusat Y=97):  touchY 78 s/d 115
-      // Item 2 (Pusat Y=135): touchY 116 s/d 153
-      // Item 3 (Pusat Y=173): touchY 154 s/d 191
-      // Item 4 (Pusat Y=211): touchY 192 s/d 228
+      // Deteksi menu yang disentuh untuk 6 item (itemH=26, gap=4, startY=34):
+      // Item 0 (Pusat Y=47):  touchY 28 s/d 61
+      // Item 1 (Pusat Y=77):  touchY 62 s/d 91
+      // Item 2 (Pusat Y=107): touchY 92 s/d 121
+      // Item 3 (Pusat Y=137): touchY 122 s/d 151
+      // Item 4 (Pusat Y=167): touchY 152 s/d 181
+      // Item 5 (Pusat Y=197): touchY 182 s/d 217
       int touchedItem = -1;
-      if (touchY >= 30 && touchY < 78)        touchedItem = 0;
-      else if (touchY >= 78 && touchY < 116)  touchedItem = 1;
-      else if (touchY >= 116 && touchY < 154) touchedItem = 2;
-      else if (touchY >= 154 && touchY < 192) touchedItem = 3;
-      else if (touchY >= 192 && touchY < 228) touchedItem = 4;
+      if (touchY >= 28 && touchY < 62)        touchedItem = 0;
+      else if (touchY >= 62 && touchY < 92)   touchedItem = 1;
+      else if (touchY >= 92 && touchY < 122)  touchedItem = 2;
+      else if (touchY >= 122 && touchY < 152) touchedItem = 3;
+      else if (touchY >= 152 && touchY < 182) touchedItem = 4;
+      else if (touchY >= 182 && touchY < 218) touchedItem = 5;
 
-      if (touchedItem >= 0 && touchedItem < 5) {
+      if (touchedItem >= 0 && touchedItem < 6) {
         Serial.printf("[MENU TOUCH] Raw(X=%d, Y=%d) -> Screen(X=%d, Y=%d) => Menu Item %d\n",
                       p.x, p.y, touchX, touchY, touchedItem + 1);
 
@@ -1922,14 +2341,20 @@ void handleInputs() {
       beepTouch();
       int nextProf = ((int)currentProfile + 1) % 3;
       currentProfile = (CommodityProfile)nextProf;
-      if (currentProfile == PROFILE_FISH_FRESH) { thresholdMin = 0.0; thresholdMax = 4.0; }
-      else if (currentProfile == PROFILE_VACCINE_PHARMA) { thresholdMin = 2.0; thresholdMax = 8.0; }
-      else { thresholdMin = -25.0; thresholdMax = -18.0; }
+      if (currentProfile == PROFILE_FISH_FRESH) { thresholdMin = 0.0; thresholdMax = 4.0; activeCommodityName = "IKAN SEGAR"; }
+      else if (currentProfile == PROFILE_VACCINE_PHARMA) { thresholdMin = 2.0; thresholdMax = 8.0; activeCommodityName = "VAKSIN"; }
+      else { thresholdMin = -25.0; thresholdMax = -18.0; activeCommodityName = "BEKU -18C"; }
       drawProfileSelectScreen();
       return;
     }
 
     if (btnConfirmPressed) {
+      preferences.begin("qguard", false);
+      preferences.putInt("prof", (int)currentProfile);
+      preferences.putString("c_name", activeCommodityName);
+      preferences.putFloat("c_min", thresholdMin);
+      preferences.putFloat("c_max", thresholdMax);
+      preferences.end();
       beepSuccess();
       currentScreen = SCREEN_MONITOR;
       screenTransitionPendingRelease = true;
@@ -1965,15 +2390,21 @@ void handleInputs() {
       }
 
       if (saveAndExit) {
+        preferences.begin("qguard", false);
+        preferences.putInt("prof", (int)currentProfile);
+        preferences.putString("c_name", activeCommodityName);
+        preferences.putFloat("c_min", thresholdMin);
+        preferences.putFloat("c_max", thresholdMax);
+        preferences.end();
         beepSuccess();
         currentScreen = SCREEN_MONITOR;
         screenTransitionPendingRelease = true;
         drawMainMonitorScreen();
       } else {
         currentProfile = selectedProf;
-        if (currentProfile == PROFILE_FISH_FRESH) { thresholdMin = 0.0; thresholdMax = 4.0; }
-        else if (currentProfile == PROFILE_VACCINE_PHARMA) { thresholdMin = 2.0; thresholdMax = 8.0; }
-        else { thresholdMin = -25.0; thresholdMax = -18.0; }
+        if (currentProfile == PROFILE_FISH_FRESH) { thresholdMin = 0.0; thresholdMax = 4.0; activeCommodityName = "IKAN SEGAR"; }
+        else if (currentProfile == PROFILE_VACCINE_PHARMA) { thresholdMin = 2.0; thresholdMax = 8.0; activeCommodityName = "VAKSIN"; }
+        else { thresholdMin = -25.0; thresholdMax = -18.0; activeCommodityName = "BEKU -18C"; }
         beepTouch();
         drawProfileSelectScreen();
       }
@@ -1989,6 +2420,51 @@ void handleInputs() {
       screenTransitionPendingRelease = true;
       drawMenuScreen();
       return;
+    }
+  }
+
+  // --- D2. KONDISI DI LAYAR RINGKASAN KARANTINA (DOSSIER) ---
+  else if (currentScreen == SCREEN_DOSSIER) {
+    // Tombol Fisik BACK: Kembali ke Menu
+    if (btnBackPressed) {
+      beepTouch();
+      currentScreen = SCREEN_MENU;
+      screenTransitionPendingRelease = true;
+      drawMenuScreen();
+      return;
+    }
+
+    // Tombol Fisik CONFIRM: Reset Metrik Pengawasan Trip
+    if (btnConfirmPressed) {
+      resetTripMetrics();
+      beepSuccess();
+      drawDossierScreen();
+      return;
+    }
+
+    // Sentuhan Layar Interaktif
+    if (touchTap) {
+      int touchX = map(p.x, TS_MINX, TS_MAXX, 0, 320);
+      touchX = constrain(touchX, 0, 320);
+      int touchY = map(p.y, TS_MINY, TS_MAXY, 240, 0);
+      touchY = constrain(touchY, 0, 240);
+
+      // Sentuh tombol [!] RESET TRIP BARU (Kiri bawah, X: 8..160, Y: 185..216)
+      if (touchY >= 185 && touchY <= 216 && touchX <= 160) {
+        resetTripMetrics();
+        beepSuccess();
+        drawDossierScreen();
+        return;
+      }
+
+      // Sentuh tombol < KEMBALI KE MENU (Kanan bawah, X: 164..312) atau Bar Footer (Y >= 218)
+      if ((touchY >= 185 && touchX > 160) || touchY >= 218) {
+        beepTouch();
+        currentScreen = SCREEN_MENU;
+        screenTransitionPendingRelease = true;
+        drawMenuScreen();
+        return;
+      }
     }
   }
 
@@ -2025,6 +2501,20 @@ void setup() {
   // 1. Setup Pin I/O
   setupHardwarePins();
   delay(50);
+
+  // Aktifkan Task Watchdog Timer (30 detik) untuk proteksi freeze mandiri
+#if defined(ESP_IDF_VERSION_MAJOR) && ESP_IDF_VERSION_MAJOR >= 5
+  esp_task_wdt_config_t twdt_config = {
+      .timeout_ms = 30000,
+      .idle_core_mask = 0,
+      .trigger_panic = true
+  };
+  esp_task_wdt_init(&twdt_config);
+#else
+  esp_task_wdt_init(30, true);
+#endif
+  esp_task_wdt_add(NULL);
+  Serial.println(F("[WATCHDOG] Task WDT aktif (30s timeout) - Self Recovery Ready!"));
 #if ENABLE_PHYSICAL_BTNS
   delay(100); // Beri waktu tegangan rel 3.3V dan pin input stabil
   btnBackIdle = digitalRead(PIN_BTN_BACK);
@@ -2127,7 +2617,8 @@ void setup() {
     if (!SD.exists("/qguard_log.csv")) {
       File f = SD.open("/qguard_log.csv", FILE_WRITE);
       if (f) {
-        f.println("Timestamp,T1_Top,T2_Core,T3_Door,MKT,AmbientTemp,AmbientHum,DoorState,GForce,Lat,Lon,RiskScore,RiskLevel");
+        f.println("Timestamp,T1_Core,T2_MidBuffer,T3_Door,MKT,AmbientTemp,AmbientHum,DoorState,GForce,Lat,Lon,RiskScore,RiskLevel");
+        f.flush();
         f.close();
       }
     }
@@ -2138,8 +2629,11 @@ void setup() {
 
   // Inisialisasi riwayat grafik awal
   for (int i = 0; i < GRAPH_HISTORY_SIZE; i++) {
-    temp2History[i] = 0.0;
+    temp1History[i] = 0.0;
   }
+
+  // Inisialisasi awal metrik pengawasan audit trip karantina
+  resetTripMetrics();
 
   // 13. Inisialisasi Wi-Fi & Web Portal Provisioning
   loadWifiPreferences();
@@ -2159,6 +2653,9 @@ void setup() {
 // 20. ARDUINO MAIN LOOP
 // ============================================================================
 void loop() {
+  // Feed Watchdog Timer setiap iterasi loop
+  esp_task_wdt_reset();
+
   unsigned long currentMillis = millis();
 
   // 0. Baca aliran data GPS NEO-6M secara berkelanjutan agar buffer UART tidak overflow
@@ -2230,6 +2727,7 @@ void loop() {
     if (currentDoorOpen != telemetry.doorOpen) {
       if (currentDoorOpen) {
         telemetry.doorOpenStart = currentMillis;
+        tripMetrics.doorBreachCount++;
         beepTouch();
       } else {
         telemetry.doorTotalOpenSec += (currentMillis - telemetry.doorOpenStart) / 1000;

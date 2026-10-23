@@ -98,6 +98,7 @@ uint32_t StorageManager::writeRecord(const DataRecord& record) {
     
     String csv = _recordToCSV(rec);
     size_t written = file.println(csv);
+    file.flush();
     file.close();
     
     if (written == 0) {
@@ -198,6 +199,7 @@ bool StorageManager::_writeCSVHeader() {
     File file = SD.open(_currentFile.c_str(), FILE_WRITE);
     if (!file) return false;
     file.println(CSV_HEADER);
+    file.flush();
     file.close();
     return true;
 }
@@ -335,6 +337,7 @@ void StorageManager::_updateSyncFile(uint32_t lastSyncedId) {
     File file = SD.open(syncFile.c_str(), FILE_WRITE);
     if (file) {
         file.println(lastSyncedId);
+        file.flush();
         file.close();
     }
 }

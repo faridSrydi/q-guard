@@ -132,8 +132,19 @@ bool SyncManager::_uploadBatch() {
         _stats.consecutiveFailures = 0;
         _retryCount = 0;
         
-        Serial.printf("[SyncManager] Batch uploaded: %d records (IDs %u-%u)\n",
-            count, fromId, toId);
+        String response = http.getString();
+        int shipIdx = response.indexOf("\"active_shipment\":");
+        if (shipIdx > 0 && response.indexOf("\"active_shipment\":null") < 0) {
+            int commIdx = response.indexOf("\"commodity\":\"", shipIdx);
+            if (commIdx > 0) {
+                commIdx += 13;
+                int commEnd = response.indexOf("\"", commIdx);
+                if (commEnd > commIdx) {
+                    String remoteCommodity = response.substring(commIdx, commEnd);
+                    Serial.printf("[SyncManager] Active shipment from server: %s\n", remoteCommodity.c_str());
+                }
+            }
+        }
         
         http.end();
         return true;
@@ -172,7 +183,6 @@ unsigned long SyncManager::_getBackoffDelay() const {
 }
 
 String SyncManager::_buildPayload(DataRecord* records, int count) {
-    StaticJsonDocument<256> meta;
     DynamicJsonDocument doc(count * 512 + 256);
     
     doc["device_id"] = records[0].deviceId;

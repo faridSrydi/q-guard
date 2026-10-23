@@ -5,6 +5,9 @@
 
 import { api } from './api.js';
 import { icons } from './icons.js';
+import { initHero3D } from './hero3d.js';
+import { initSimulator } from './simulator.js';
+import { t, initI18n, applyTranslations, getLang, setLanguage } from './i18n.js';
 
 // Application State
 const state = {
@@ -50,8 +53,8 @@ const el = {
     loginPassword: document.getElementById('login-password'),
     loginErrorMsg: document.getElementById('login-error-msg'),
     topbarUserName: document.getElementById('topbar-user-name'),
-    topbarUserEmail: document.getElementById('topbar-user-email'),
-    btnLogout: document.getElementById('btn-logout')
+    btnLogout: document.getElementById('btn-logout'),
+    btnSidebarLogout: document.getElementById('btn-sidebar-mobile-logout')
 };
 
 // Global Wi-Fi & Connection State Updater
@@ -60,16 +63,19 @@ function updateWifiStatus(status, details = {}) {
 
     const isOnline = status === 'online';
     const isStandby = status === 'standby';
+    const isEn = getLang() === 'en';
 
     // 1. Topbar Badge
     if (el.topbarWifiBadge) {
         el.topbarWifiBadge.className = `wifi-status-badge ${status}`;
         el.topbarWifiBadge.title = isOnline 
-            ? `Wi-Fi ESP32 Terhubung (${details.subText || 'Sinkronisasi Realtime'})`
-            : (isStandby ? 'Wi-Fi ESP32 Standby (Menunggu Data Baru)' : 'Wi-Fi ESP32 Terputus (Mode Buffer MicroSD Offline)');
+            ? `${t('topbar.wifi_title', 'Wi-Fi ESP32')} ${t('topbar.wifi_connected', 'Terhubung')} (${details.subText || (isEn ? 'Realtime Sync' : 'Sinkronisasi Realtime')})`
+            : (isStandby ? 'Wi-Fi ESP32 Standby (Menunggu Data Baru)' : `${t('topbar.wifi_title', 'Wi-Fi ESP32')} ${t('topbar.wifi_disconnected', 'Terputus')} (Mode Buffer MicroSD)`);
     }
     if (el.topbarWifiText) {
-        el.topbarWifiText.innerText = isOnline ? 'Terhubung' : (isStandby ? 'Standby' : 'Terputus');
+        el.topbarWifiText.innerText = isOnline 
+            ? t('topbar.wifi_connected', 'Terhubung') 
+            : (isStandby ? 'Standby' : t('topbar.wifi_disconnected', 'Terputus'));
     }
     if (el.topbarWifiIcon) {
         el.topbarWifiIcon.innerHTML = isOnline ? icons.wifi : (isStandby ? icons.wifi : icons.wifiOff);
@@ -80,10 +86,12 @@ function updateWifiStatus(status, details = {}) {
         el.connDot.className = `connectivity-dot ${isOnline ? 'online' : 'offline'}`;
     }
     if (el.connTitle) {
-        el.connTitle.innerText = isOnline ? 'ESP32 Wi-Fi Terhubung' : (isStandby ? 'Wi-Fi Standby' : 'Wi-Fi Terputus (MicroSD)');
+        el.connTitle.innerText = isOnline 
+            ? (isEn ? 'ESP32 Wi-Fi Connected' : 'ESP32 Wi-Fi Terhubung') 
+            : (isStandby ? (isEn ? 'Wi-Fi Standby' : 'Wi-Fi Standby') : (isEn ? 'Wi-Fi Disconnected (MicroSD)' : 'Wi-Fi Terputus (MicroSD)'));
     }
     if (el.syncTime) {
-        el.syncTime.innerText = details.syncText || (isOnline ? 'Polling Live' : 'Menunggu Sinyal');
+        el.syncTime.innerText = details.syncText || (isOnline ? (isEn ? 'Live Polling' : 'Polling Live') : (isEn ? 'Awaiting Signal' : 'Menunggu Sinyal'));
     }
 
     // 3. Telemetri Langsung Strip
@@ -94,7 +102,9 @@ function updateWifiStatus(status, details = {}) {
     const monStorageMode = document.getElementById('mon-storage-mode');
 
     if (monWifiVal) {
-        monWifiVal.innerText = isOnline ? 'Terhubung' : (isStandby ? 'Standby' : 'Terputus');
+        monWifiVal.innerText = isOnline 
+            ? t('topbar.wifi_connected', 'Terhubung') 
+            : (isStandby ? 'Standby' : t('topbar.wifi_disconnected', 'Terputus'));
         monWifiVal.className = `wifi-strip-val ${isOnline ? 'text-success' : (isStandby ? 'text-warning' : 'text-danger')}`;
     }
     if (monWifiIcon) {
@@ -102,7 +112,7 @@ function updateWifiStatus(status, details = {}) {
         monWifiIcon.innerHTML = isOnline ? icons.wifi : (isStandby ? icons.wifi : icons.wifiOff);
     }
     if (monCommChannel) {
-        monCommChannel.innerText = isOnline ? 'Realtime' : 'Offline (MicroSD)';
+        monCommChannel.innerText = isOnline ? (isEn ? 'Realtime' : 'Realtime') : (isEn ? 'Offline (MicroSD)' : 'Offline (MicroSD)');
     }
     if (monLastSyncTime && details.lastSeenFormatted) {
         monLastSyncTime.innerText = details.lastSeenFormatted;
@@ -116,10 +126,14 @@ function updateWifiStatus(status, details = {}) {
     const overviewWifiSub = document.getElementById('overview-wifi-sub');
     if (overviewWifiBadge) {
         overviewWifiBadge.className = `metric-badge ${isOnline ? 'safe' : (isStandby ? 'warn' : 'crit')}`;
-        overviewWifiBadge.innerText = isOnline ? 'Wi-Fi: Terhubung' : (isStandby ? 'Wi-Fi: Standby' : 'Wi-Fi: Terputus');
+        overviewWifiBadge.innerText = isOnline 
+            ? (isEn ? 'Wi-Fi: Connected' : 'Wi-Fi: Terhubung') 
+            : (isStandby ? (isEn ? 'Wi-Fi: Standby' : 'Wi-Fi: Standby') : (isEn ? 'Wi-Fi: Disconnected' : 'Wi-Fi: Terputus'));
     }
     if (overviewWifiSub) {
-        overviewWifiSub.innerText = isOnline ? 'ESP32 Online Live' : 'Mode Offline MicroSD';
+        overviewWifiSub.innerText = isOnline 
+            ? (isEn ? 'ESP32 Online Live' : 'ESP32 Online Live') 
+            : (isEn ? 'MicroSD Offline Mode' : 'Mode Offline MicroSD');
     }
 }
 
@@ -137,24 +151,27 @@ function showToast(message, type = 'info') {
     }, 3500);
 }
 
-// Format Waktu Ramah Pengguna (Standar Indonesia / WIB)
+// Format Waktu Ramah Pengguna (Standar Indonesia / Internasional)
 function formatTimestamp(isoStr, includeSeconds = true) {
     if (!isoStr) return '--';
     const d = new Date(isoStr);
     if (isNaN(d.getTime())) return isoStr;
 
+    const isEn = getLang() === 'en';
     const day = String(d.getDate()).padStart(2, '0');
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-    const month = months[d.getMonth()];
+    const monthsId = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = (isEn ? monthsEn : monthsId)[d.getMonth()];
     const year = d.getFullYear();
     const hours = String(d.getHours()).padStart(2, '0');
     const minutes = String(d.getMinutes()).padStart(2, '0');
     const seconds = String(d.getSeconds()).padStart(2, '0');
+    const tz = isEn ? 'UTC+7' : 'WIB';
 
     if (includeSeconds) {
-        return `${day} ${month} ${year}, ${hours}:${minutes}:${seconds} WIB`;
+        return `${day} ${month} ${year}, ${hours}:${minutes}:${seconds} ${tz}`;
     }
-    return `${day} ${month} ${year}, ${hours}:${minutes} WIB`;
+    return `${day} ${month} ${year}, ${hours}:${minutes} ${tz}`;
 }
 
 // Sanitasi Nama Komoditas (Menghilangkan label simulasi lama)
@@ -200,13 +217,37 @@ const navLandingTentang = document.getElementById('nav-landing-tentang');
 const navLandingArsitektur = document.getElementById('nav-landing-arsitektur');
 
 const LANDING_HASHES = ['home', 'simulator', 'journey', 'tentang', 'arsitektur', 'portal', 'landing', ''];
+const ADMIN_ROUTES = new Set(['overview', 'monitoring', 'shipments', 'gps-track', 'risk-engine', 'alerts', 'reports', 'settings']);
+const ADMIN_PATH_PREFIX = '/admin/';
+
+function getPathRoute() {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    if (path === '/admin' || path === '/admin/index.html') return 'overview';
+    if (path.startsWith(ADMIN_PATH_PREFIX)) return path.slice(ADMIN_PATH_PREFIX.length).split('/')[0] || 'overview';
+    return null;
+}
+
+function getRouteUrl(view) {
+    return `/admin/${view}`;
+}
+
+function navigateTo(view, { replace = false } = {}) {
+    const target = getRouteUrl(view);
+    if (replace) window.history.replaceState({ view }, '', target);
+    else window.history.pushState({ view }, '', target);
+    switchView(view);
+}
+
 function isLandingHash(hash) {
     return LANDING_HASHES.includes((hash || '').toLowerCase());
 }
 
 function showLandingPage(targetSection = 'home') {
     if (typeof stopGpsLiveTracking === 'function') stopGpsLiveTracking();
-    if (elLandingPage) elLandingPage.classList.remove('hidden');
+    if (elLandingPage) {
+        elLandingPage.classList.remove('hidden');
+        window.dispatchEvent(new Event('resize'));
+    }
     if (el.appLayout) el.appLayout.classList.add('hidden');
     if (el.loginOverlay) el.loginOverlay.classList.add('hidden');
     
@@ -262,28 +303,24 @@ function openLoginModal() {
 
 function closeLoginModal() {
     if (el.loginOverlay) el.loginOverlay.classList.add('hidden');
-    const hash = window.location.hash.replace('#', '');
-    if (!state.user && !isLandingHash(hash)) {
-        window.location.hash = 'home';
+    if (!state.user && getPathRoute()) {
+        window.history.replaceState({}, '', '/');
         showLandingPage('home');
     }
 }
 
-// Routing & Navigation
+// Path-based navigation for public landing and protected admin views.
 function switchView(viewName) {
-    const cleanView = (viewName || '').replace('#', '').trim();
-    
-    // 1. Landing Page Section Routes
+    const cleanView = (viewName || '').replace(/^#|^\//, '').trim();
+
     if (isLandingHash(cleanView)) {
         showLandingPage(cleanView === 'landing' || cleanView === 'portal' ? 'home' : cleanView);
         return;
     }
 
-    // 2. Direct Login Route
     if (cleanView === 'login') {
         if (state.user) {
-            window.location.hash = 'overview';
-            showDashboardView('overview');
+            navigateTo('overview', { replace: true });
         } else {
             showLandingPage('home');
             openLoginModal();
@@ -291,14 +328,21 @@ function switchView(viewName) {
         return;
     }
 
-    // 3. Dashboard Protected Views
+    if (!ADMIN_ROUTES.has(cleanView)) {
+        if (cleanView) {
+            window.history.replaceState({}, '', '/');
+            showLandingPage('home');
+        }
+        return;
+    }
+
     if (!state.user) {
         showLandingPage('home');
         openLoginModal();
         return;
     }
 
-    showDashboardView(cleanView || 'overview');
+    showDashboardView(cleanView);
 }
 
 // Sidebar Drawer & Desktop Toggle Control
@@ -379,17 +423,25 @@ el.navItems.forEach(item => {
     item.addEventListener('click', (e) => {
         e.preventDefault();
         const view = item.dataset.view;
-        window.location.hash = view;
-        switchView(view);
+        if (view === 'portal') {
+            window.history.pushState({}, '', '/');
+            showLandingPage('home');
+        } else {
+            navigateTo(view);
+        }
         if (isMobileView()) {
             closeMobileSidebar();
         }
     });
 });
 
-window.addEventListener('hashchange', () => {
-    const hash = window.location.hash.replace('#', '') || 'overview';
-    switchView(hash);
+window.addEventListener('popstate', () => {
+    const route = getPathRoute();
+    if (route) {
+        switchView(route);
+    } else {
+        showLandingPage('home');
+    }
     closeMobileSidebar();
 });
 
@@ -397,47 +449,53 @@ window.addEventListener('hashchange', () => {
 async function renderCurrentView() {
     switch (state.currentView) {
         case 'overview':
-            el.pageTitle.innerText = 'Ringkasan Utama';
-            el.pageBreadcrumb.innerText = 'Monitoring Armada Kargo';
+            el.pageTitle.innerText = t('view.overview_title', 'Ringkasan Monitoring');
+            el.pageBreadcrumb.innerText = t('view.overview_bc', 'Monitoring Rantai Dingin • Barantin');
             await renderOverviewView();
             break;
         case 'monitoring':
-            el.pageTitle.innerText = 'Telemetri Sensor';
-            el.pageBreadcrumb.innerText = 'Suhu Tri-Probe & Kondisi Boks';
+            el.pageTitle.innerText = t('view.monitoring_title', 'Monitoring Telemetri');
+            el.pageBreadcrumb.innerText = t('view.monitoring_bc', 'Telemetri Sensor Tri-Probe');
             await renderMonitoringView();
             break;
         case 'shipments':
-            el.pageTitle.innerText = 'Data Pengiriman';
-            el.pageBreadcrumb.innerText = 'Daftar Kontainer Pelayaran';
+            el.pageTitle.innerText = t('view.shipments_title', 'Daftar Pengiriman');
+            el.pageBreadcrumb.innerText = t('view.shipments_bc', 'Data Kargo & Kontainer');
             await renderShipmentsView();
             break;
         case 'gps-track':
-            el.pageTitle.innerText = 'Peta Pelayaran GPS';
-            el.pageBreadcrumb.innerText = 'Posisi Kontainer & Geofence Pelabuhan';
+            el.pageTitle.innerText = t('view.gps_title', 'Pelacakan GPS');
+            el.pageBreadcrumb.innerText = t('view.gps_bc', 'Rute Pelayaran & Koordinat');
             await renderGpsView();
             break;
         case 'risk-engine':
-            el.pageTitle.innerText = 'Analisis Risiko AI';
-            el.pageBreadcrumb.innerText = 'Prediksi Mutu & Suhu MKT';
+            el.pageTitle.innerText = t('view.risk_title', 'Evaluasi Risiko Mutu');
+            el.pageBreadcrumb.innerText = t('view.risk_bc', 'Analisis Kinetika MKT');
             await renderRiskEngineView();
             break;
         case 'alerts':
-            el.pageTitle.innerText = 'Log Peringatan';
-            el.pageBreadcrumb.innerText = 'Riwayat Kejadian & Deviasi';
+            el.pageTitle.innerText = t('view.alerts_title', 'Riwayat Peringatan');
+            el.pageBreadcrumb.innerText = t('view.alerts_bc', 'Daftar Kejadian & Deviasi');
             await renderAlertsView();
             break;
         case 'reports':
-            el.pageTitle.innerText = 'Laporan Karantina';
-            el.pageBreadcrumb.innerText = 'Sertifikat Pelepasan Kargo';
+            el.pageTitle.innerText = t('view.reports_title', 'Laporan & Disposisi');
+            el.pageBreadcrumb.innerText = t('view.reports_bc', 'Dokumen Pelepasan Karantina');
             await renderReportsView();
             break;
         case 'settings':
-            el.pageTitle.innerText = 'Pengaturan Regulasi';
-            el.pageBreadcrumb.innerText = 'Ambang Batas Suhu Karantina';
+            el.pageTitle.innerText = t('view.settings_title', 'Pengaturan Parameter');
+            el.pageBreadcrumb.innerText = t('view.settings_bc', 'Ambang Batas Telemetri');
             await renderSettingsView();
             break;
         default:
             switchView('overview');
+            return;
+    }
+
+    // Apply translations to dynamically injected view HTML
+    if (el.contentBody) {
+        applyTranslations(el.contentBody);
     }
 }
 
@@ -476,52 +534,52 @@ async function renderOverviewView() {
             <div class="grid-cards">
                 <div class="metric-card card-cyan">
                     <div class="metric-header">
-                        <span class="metric-label">Kargo Aktif</span>
+                        <span class="metric-label" data-i18n="overview.active_cargo">Kargo Aktif</span>
                         <span class="metric-icon">${icons.package}</span>
                     </div>
                     <div class="metric-value-row">
                         <span class="metric-value">${activeCount}</span>
-                        <span class="metric-unit">kontainer</span>
+                        <span class="metric-unit" data-i18n="overview.container_unit">kontainer</span>
                     </div>
                     <div class="metric-footer">
-                        <span class="metric-badge safe">Dipantau</span>
-                        <span>Rantai dingin stabil</span>
+                        <span class="metric-badge safe" data-i18n="overview.monitored">Dipantau</span>
+                        <span data-i18n="overview.cold_chain_stable">Rantai dingin stabil</span>
                     </div>
                 </div>
 
                 <div class="metric-card ${criticalAlerts > 0 ? 'card-danger' : 'card-success'}">
                     <div class="metric-header">
-                        <span class="metric-label">Peringatan Kritis</span>
+                        <span class="metric-label" data-i18n="overview.critical_alerts">Peringatan Kritis</span>
                         <span class="metric-icon">${icons.siren}</span>
                     </div>
                     <div class="metric-value-row">
                         <span class="metric-value">${criticalAlerts}</span>
-                        <span class="metric-unit">insiden</span>
+                        <span class="metric-unit" data-i18n="overview.incident_unit">insiden</span>
                     </div>
                     <div class="metric-footer">
-                        <span class="metric-badge ${criticalAlerts > 0 ? 'crit' : 'safe'}">${criticalAlerts > 0 ? 'Perlu Tindakan' : 'Aman'}</span>
-                        <span>${unackedAlerts} belum dicek</span>
+                        <span class="metric-badge ${criticalAlerts > 0 ? 'crit' : 'safe'}">${criticalAlerts > 0 ? (getLang() === 'en' ? 'Action Required' : 'Perlu Tindakan') : (getLang() === 'en' ? 'Safe' : 'Aman')}</span>
+                        <span>${unackedAlerts} ${getLang() === 'en' ? 'unconfirmed' : 'belum dikonfirmasi'}</span>
                     </div>
                 </div>
 
                 <div class="metric-card card-purple">
                     <div class="metric-header">
-                        <span class="metric-label">Perangkat Aktif</span>
+                        <span class="metric-label" data-i18n="overview.active_devices">Perangkat Aktif</span>
                         <span class="metric-icon">${icons.telemetry}</span>
                     </div>
                     <div class="metric-value-row">
                         <span class="metric-value">${state.devices.length}</span>
-                        <span class="metric-unit">unit</span>
+                        <span class="metric-unit" data-i18n="overview.unit">unit</span>
                     </div>
                     <div class="metric-footer">
-                        <span class="metric-badge ${state.wifiStatus === 'online' ? 'safe' : 'crit'}" id="overview-wifi-badge">Wi-Fi: ${state.wifiStatus === 'online' ? 'Terhubung' : 'Terputus'}</span>
-                        <span id="overview-wifi-sub">${state.wifiStatus === 'online' ? 'ESP32 Online Live' : 'Mode Offline MicroSD'}</span>
+                        <span class="metric-badge ${state.wifiStatus === 'online' ? 'safe' : 'crit'}" id="overview-wifi-badge">Wi-Fi: ${state.wifiStatus === 'online' ? (getLang() === 'en' ? 'Connected' : 'Terhubung') : (getLang() === 'en' ? 'Disconnected' : 'Terputus')}</span>
+                        <span id="overview-wifi-sub">${state.wifiStatus === 'online' ? (getLang() === 'en' ? 'ESP32 Connected' : 'ESP32 Terhubung') : (getLang() === 'en' ? 'Local Storage (MicroSD)' : 'Penyimpanan Lokal (MicroSD)')}</span>
                     </div>
                 </div>
 
                 <div class="metric-card card-success">
                     <div class="metric-header">
-                        <span class="metric-label">Kepatuhan Mutu</span>
+                        <span class="metric-label" data-i18n="overview.quality_compliance">Kepatuhan Mutu</span>
                         <span class="metric-icon">${icons.shieldCheck}</span>
                     </div>
                     <div class="metric-value-row">
@@ -530,7 +588,7 @@ async function renderOverviewView() {
                     </div>
                     <div class="metric-footer">
                         <span class="metric-badge safe">Standar SNI/WHO</span>
-                        <span>Kualitas kargo terjaga</span>
+                        <span data-i18n="overview.standard_compliant">Parameter Sesuai Standar</span>
                     </div>
                 </div>
             </div>
@@ -538,8 +596,8 @@ async function renderOverviewView() {
             <div class="row-2col">
                 <div class="panel">
                     <div class="panel-header">
-                        <h2 class="panel-title">${icons.lineChart} Riwayat Suhu Armada</h2>
-                        <span style="font-size: 12px; color: var(--text-muted)">Batas Aman: -25°C s/d -18°C</span>
+                        <h2 class="panel-title">${icons.lineChart} <span data-i18n="overview.fleet_temp_history">Riwayat Suhu Armada</span></h2>
+                        <span style="font-size: 12px; color: var(--text-muted)" data-i18n="overview.safe_limit_label">Batas Aman: -25°C s/d -18°C</span>
                     </div>
                     <div class="chart-container">
                         <canvas id="overviewTempChart"></canvas>
@@ -548,46 +606,46 @@ async function renderOverviewView() {
 
                 <div class="panel">
                     <div class="panel-header">
-                        <h2 class="panel-title">${icons.alertTriangle} Proporsi Risiko Mutu</h2>
+                        <h2 class="panel-title">${icons.alertTriangle} <span data-i18n="overview.risk_donut_title">Proporsi Risiko Mutu</span></h2>
                     </div>
                     <div class="chart-container" style="height: 260px;">
                         <canvas id="overviewRiskDonut"></canvas>
                     </div>
                     <div style="margin-top: 15px; font-size: 12px; color: var(--text-secondary); text-align: center;">
-                        ${riskSummary.counts?.critical || 0} Kritis • ${riskSummary.counts?.warning || 0} Waspada • ${riskSummary.counts?.normal || 0} Normal
+                        ${riskSummary.counts?.critical || 0} ${getLang() === 'en' ? 'Critical' : 'Kritis'} • ${riskSummary.counts?.warning || 0} ${getLang() === 'en' ? 'Warning' : 'Waspada'} • ${riskSummary.counts?.normal || 0} Normal
                     </div>
                 </div>
             </div>
 
             <div class="panel">
                 <div class="panel-header">
-                    <h2 class="panel-title">${icons.clipboard} Pengiriman Karantina Aktif</h2>
-                    <button class="btn btn-secondary btn-sm" id="btn-create-shipment-quick">${icons.plus} Tambah Kargo</button>
+                    <h2 class="panel-title">${icons.clipboard} <span data-i18n="overview.recent_shipments">Pengiriman Karantina Aktif</span></h2>
+                    <button class="btn btn-secondary btn-sm" id="btn-create-shipment-quick">${icons.plus} ${getLang() === 'en' ? 'Add Cargo' : 'Tambah Kargo'}</button>
                 </div>
                 <div class="table-wrapper">
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>ID Kargo</th>
-                                <th>Perangkat</th>
-                                <th>Komoditas</th>
-                                <th>Rute Perjalanan</th>
-                                <th>Batas Suhu</th>
-                                <th>Status</th>
-                                <th>Aksi</th>
+                                <th>${getLang() === 'en' ? 'Cargo ID' : 'ID Kargo'}</th>
+                                <th data-i18n="overview.col_device">Perangkat</th>
+                                <th data-i18n="overview.col_commodity">Komoditas</th>
+                                <th data-i18n="overview.col_route">Rute Perjalanan</th>
+                                <th>${getLang() === 'en' ? 'Temp Limit' : 'Batas Suhu'}</th>
+                                <th data-i18n="common.status">Status</th>
+                                <th data-i18n="common.action">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${state.shipments.length > 0 ? state.shipments.map(s => `
                                 <tr>
                                     <td class="mono-cell" style="font-weight: 600; color: var(--ice-blue);">${s.id}</td>
-                                    <td><span class="mono-cell">${s.device_id || 'Belum Ditaut'}</span></td>
+                                    <td><span class="mono-cell">${s.device_id || (getLang() === 'en' ? 'Not Paired' : 'Belum Dihubungkan')}</span></td>
                                     <td><strong>${formatCommodityName(s.commodity)}</strong></td>
-                                    <td>${s.origin || 'Pelabuhan Asal'} → ${s.destination || 'Tujuan'}</td>
+                                    <td>${s.origin || (getLang() === 'en' ? 'Origin Port' : 'Pelabuhan Asal')} → ${s.destination || (getLang() === 'en' ? 'Destination' : 'Tujuan')}</td>
                                     <td><span class="mono-cell">${s.temp_min}°C ~ ${s.temp_max}°C</span></td>
-                                    <td><span class="status-pill ${s.status === 'active' ? 'NORMAL' : 'CAUTION'}">${s.status === 'active' ? 'AKTIF' : s.status}</span></td>
+                                    <td><span class="status-pill ${s.status === 'active' ? 'NORMAL' : 'CAUTION'}">${s.status === 'active' ? (getLang() === 'en' ? 'ACTIVE' : 'AKTIF') : s.status}</span></td>
                                     <td>
-                                        <button class="btn btn-secondary btn-sm btn-inspect-shipment" data-id="${s.id}">Detail</button>
+                                        <button class="btn btn-secondary btn-sm btn-inspect-shipment" data-id="${s.id}" data-i18n="common.detail">Detail</button>
                                     </td>
                                 </tr>
                             `).join('') : `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Belum ada kargo aktif terdaftar. Klik tombol Tambah Kargo untuk mendaftarkan kargo baru.</td></tr>`}
@@ -600,7 +658,7 @@ async function renderOverviewView() {
         document.getElementById('btn-create-shipment-quick')?.addEventListener('click', showCreateShipmentModal);
         document.querySelectorAll('.btn-inspect-shipment').forEach(btn => {
             btn.addEventListener('click', () => {
-                window.location.hash = 'risk-engine';
+                window.history.replaceState({}, '', '/admin/risk-engine');
                 switchView('risk-engine');
             });
         });
@@ -609,55 +667,109 @@ async function renderOverviewView() {
         renderOverviewCharts(histReadings, riskSummary.counts || {});
 
     } catch (err) {
-        el.contentBody.innerHTML = `<div class="error-state">Failed to load overview: ${err.message}</div>`;
+        el.contentBody.innerHTML = `<div class="error-state">Gagal memuat ringkasan: ${err.message}</div>`;
     }
 }
 
 function renderOverviewCharts(readings = [], riskCounts = {}) {
     const ctxTemp = document.getElementById('overviewTempChart')?.getContext('2d');
     if (ctxTemp) {
-        let labels = [];
-        let tempData = [];
-
-        if (readings.length > 0) {
-            labels = readings.map(r => new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-            tempData = readings.map(r => r.temperature_probe_2 !== null ? Number(r.temperature_probe_2) : (r.temperature_probe_1 !== null ? Number(r.temperature_probe_1) : null));
-        } else {
-            labels = ['Menunggu Data Telemetri'];
-            tempData = [null];
+        if (state.charts.overviewTemp) {
+            state.charts.overviewTemp.destroy();
         }
 
-        const validVals = tempData.filter(v => v !== null && !isNaN(v));
-        const minVal = validVals.length > 0 ? Math.floor(Math.min(...validVals) - 3) : -25;
-        const maxVal = validVals.length > 0 ? Math.ceil(Math.max(...validVals) + 3) : 10;
+        let labels = [];
+        let dataP1 = [];
+        let dataP2 = [];
+        let dataP3 = [];
 
+        if (readings.length > 0) {
+            labels = readings.map(r => {
+                if (!r.timestamp) return '';
+                const parts = r.timestamp.split('T');
+                if (parts.length > 1) return parts[1].replace('Z', '').substring(0, 8);
+                return r.timestamp.substring(11, 19) || r.timestamp;
+            });
+            dataP1 = readings.map(r => r.temperature_probe_1 !== null && !isNaN(r.temperature_probe_1) ? Number(r.temperature_probe_1) : null);
+            dataP2 = readings.map(r => r.temperature_probe_2 !== null && !isNaN(r.temperature_probe_2) ? Number(r.temperature_probe_2) : null);
+            dataP3 = readings.map(r => r.temperature_probe_3 !== null && !isNaN(r.temperature_probe_3) ? Number(r.temperature_probe_3) : null);
+        } else {
+            labels = ['Menunggu Telemetri'];
+            dataP1 = [null];
+            dataP2 = [null];
+            dataP3 = [null];
+        }
+
+        const allVals = [...dataP1, ...dataP2, ...dataP3, -18.0, -25.0].filter(v => v !== null && !isNaN(v));
+        const minVal = allVals.length > 0 ? Math.floor(Math.min(...allVals) - 2) : -28;
+        const maxVal = allVals.length > 0 ? Math.ceil(Math.max(...allVals) + 2) : 5;
+
+        const gradP1 = ctxTemp.createLinearGradient(0, 0, 0, 260);
+        gradP1.addColorStop(0, 'rgba(2, 132, 199, 0.18)');
+        gradP1.addColorStop(1, 'rgba(2, 132, 199, 0.0)');
+
+        const isMobileOverview = window.innerWidth <= 640;
         state.charts.overviewTemp = new Chart(ctxTemp, {
             type: 'line',
             data: {
                 labels: labels,
                 datasets: [
                     {
-                        label: 'Suhu Inti Kargo (°C)',
-                        data: tempData,
-                        borderColor: '#06b6d4',
-                        backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                        label: isMobileOverview ? 'P1 Inti (°C)' : 'Probe 1 • Inti Kargo (°C)',
+                        data: dataP1,
+                        borderColor: '#0284c7',
+                        backgroundColor: gradP1,
                         fill: true,
-                        tension: 0.3,
-                        pointRadius: 4
+                        tension: 0.35,
+                        borderWidth: 2.5,
+                        pointRadius: isMobileOverview ? 2.5 : 3.5,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#0284c7',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 1.5
                     },
                     {
-                        label: 'Batas Maksimum (-18°C)',
+                        label: isMobileOverview ? 'P2 Buffer (°C)' : 'Probe 2 • Buffer Es (°C)',
+                        data: dataP2,
+                        borderColor: '#10b981',
+                        backgroundColor: 'transparent',
+                        fill: false,
+                        tension: 0.35,
+                        borderWidth: 2,
+                        pointRadius: isMobileOverview ? 2.5 : 3,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: '#10b981',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 1.5
+                    },
+                    {
+                        label: isMobileOverview ? 'P3 Pintu (°C)' : 'Probe 3 • Ambang Pintu (°C)',
+                        data: dataP3,
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'transparent',
+                        fill: false,
+                        tension: 0.35,
+                        borderWidth: 2,
+                        borderDash: [5, 4],
+                        pointRadius: isMobileOverview ? 2.5 : 3,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: '#f59e0b',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 1.5
+                    },
+                    {
+                        label: isMobileOverview ? 'Batas Max (-18°C)' : 'Batas Maksimum Beku (-18.0°C)',
                         data: Array(labels.length).fill(-18.0),
                         borderColor: '#ef4444',
-                        borderDash: [5, 5],
-                        borderWidth: 1.5,
+                        borderDash: [6, 4],
+                        borderWidth: 1.8,
                         pointRadius: 0,
                         fill: false
                     },
                     {
-                        label: 'Batas Minimum (-25°C)',
+                        label: isMobileOverview ? 'Batas Min (-25°C)' : 'Batas Pendingin Min (-25.0°C)',
                         data: Array(labels.length).fill(-25.0),
-                        borderColor: '#3b82f6',
+                        borderColor: '#38bdf8',
                         borderDash: [5, 5],
                         borderWidth: 1.5,
                         pointRadius: 0,
@@ -668,19 +780,71 @@ function renderOverviewCharts(readings = [], riskCounts = {}) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        left: 0,
+                        right: isMobileOverview ? 4 : 8,
+                        top: 0,
+                        bottom: 0
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
                 plugins: {
-                    legend: { labels: { color: '#94a3b8', font: { family: 'Inter' } } }
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            boxWidth: isMobileOverview ? 8 : 10,
+                            boxHeight: isMobileOverview ? 8 : 10,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            padding: isMobileOverview ? 6 : 12,
+                            color: '#475569',
+                            font: { family: "'Inter', sans-serif", size: isMobileOverview ? 10.5 : 11, weight: 500 }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.94)',
+                        titleFont: { family: "'Outfit', sans-serif", size: 12, weight: 600 },
+                        bodyFont: { family: "'JetBrains Mono', monospace", size: 11 },
+                        padding: 10,
+                        cornerRadius: 8,
+                        boxPadding: 4,
+                        callbacks: {
+                            label: function(context) {
+                                const val = context.parsed.y;
+                                if (context.dataset.label.includes('Batas')) {
+                                    return `🚨 ${context.dataset.label}: ${val.toFixed(1)}°C`;
+                                }
+                                const diff = val - (-18.0);
+                                const status = diff > 0 ? `(⚠️ +${diff.toFixed(1)}°C)` : `(✅ Aman)`;
+                                return `${context.dataset.label}: ${val !== null ? val.toFixed(1) : '--'}°C ${status}`;
+                            }
+                        }
+                    }
                 },
                 scales: {
                     y: {
-                        grid: { color: '#1e293b' },
-                        ticks: { color: '#64748b' },
+                        grid: { color: 'rgba(226, 232, 240, 0.7)', drawBorder: false },
+                        ticks: {
+                            color: '#64748b',
+                            font: { family: "'Inter', sans-serif", size: isMobileOverview ? 9.5 : 11 },
+                            callback: (v) => v + '°C'
+                        },
                         suggestedMin: minVal,
                         suggestedMax: maxVal
                     },
                     x: {
-                        grid: { color: '#1e293b' },
-                        ticks: { color: '#64748b' }
+                        grid: { color: 'rgba(241, 245, 249, 0.9)', drawBorder: false },
+                        ticks: {
+                            color: '#64748b',
+                            font: { family: "'Inter', sans-serif", size: isMobileOverview ? 9.5 : 11 },
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: isMobileOverview ? 5 : 7
+                        }
                     }
                 }
             }
@@ -689,6 +853,10 @@ function renderOverviewCharts(readings = [], riskCounts = {}) {
 
     const ctxDonut = document.getElementById('overviewRiskDonut')?.getContext('2d');
     if (ctxDonut) {
+        if (state.charts.overviewDonut) {
+            state.charts.overviewDonut.destroy();
+        }
+
         const norm = riskCounts.normal || 0;
         const warn = riskCounts.warning || 0;
         const crit = riskCounts.critical || 0;
@@ -697,20 +865,49 @@ function renderOverviewCharts(readings = [], riskCounts = {}) {
         state.charts.overviewDonut = new Chart(ctxDonut, {
             type: 'doughnut',
             data: {
-                labels: hasCounts ? ['Aman / Normal', 'Waspada', 'Kritis'] : ['Belum Ada Insiden (100% Normal)'],
+                labels: hasCounts ? ['Aman (Normal)', 'Waspada (Warning)', 'Kritis (Critical)'] : ['Belum Ada Insiden (100% Normal)'],
                 datasets: [{
                     data: hasCounts ? [norm, warn, crit] : [1],
                     backgroundColor: hasCounts ? ['#10b981', '#f59e0b', '#ef4444'] : ['#10b981'],
-                    borderWidth: 0
+                    borderColor: '#ffffff',
+                    borderWidth: 3,
+                    hoverOffset: 6
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 10,
+                            boxHeight: 10,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            padding: 14,
+                            color: '#475569',
+                            font: { family: "'Inter', sans-serif", size: 11, weight: 500 }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.94)',
+                        titleFont: { family: "'Outfit', sans-serif", size: 13, weight: 600 },
+                        bodyFont: { family: "'Inter', sans-serif", size: 12 },
+                        padding: 12,
+                        cornerRadius: 8,
+                        boxPadding: 6,
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const val = context.parsed;
+                                const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '100';
+                                return ` ${context.label}: ${val} kontainer (${pct}%)`;
+                            }
+                        }
+                    }
                 },
-                cutout: '70%'
+                cutout: '72%'
             }
         });
     }
@@ -776,15 +973,15 @@ async function renderMonitoringView() {
                 <div class="wifi-strip-item">
                     <span class="wifi-strip-icon ${isWifiOnline ? 'online' : 'offline'}" id="mon-wifi-icon">${isWifiOnline ? icons.wifi : icons.wifiOff}</span>
                     <div class="wifi-strip-meta">
-                        <span class="wifi-strip-title">Status Wi-Fi</span>
-                        <strong class="wifi-strip-val ${isWifiOnline ? 'text-success' : 'text-danger'}" id="mon-wifi-val">${isWifiOnline ? 'Terhubung' : 'Terputus'}</strong>
+                        <span class="wifi-strip-title" data-i18n="mon.wifi_strip_title">Status Wi-Fi</span>
+                        <strong class="wifi-strip-val ${isWifiOnline ? 'text-success' : 'text-danger'}" id="mon-wifi-val">${isWifiOnline ? (getLang() === 'en' ? 'Connected' : 'Terhubung') : (getLang() === 'en' ? 'Disconnected' : 'Terputus')}</strong>
                     </div>
                 </div>
                 <div class="wifi-strip-divider"></div>
                 <div class="wifi-strip-item">
                     <span class="wifi-strip-icon">${icons.telemetry}</span>
                     <div class="wifi-strip-meta">
-                        <span class="wifi-strip-title">Transmisi Data</span>
+                        <span class="wifi-strip-title" data-i18n="mon.data_transmission">Transmisi Data</span>
                         <strong class="wifi-strip-val" id="mon-comm-channel">${isWifiOnline ? 'Realtime' : 'Offline (MicroSD)'}</strong>
                     </div>
                 </div>
@@ -792,15 +989,15 @@ async function renderMonitoringView() {
                 <div class="wifi-strip-item">
                     <span class="wifi-strip-icon">${icons.refresh}</span>
                     <div class="wifi-strip-meta">
-                        <span class="wifi-strip-title">Pembaruan Terakhir</span>
-                        <strong class="wifi-strip-val" id="mon-last-sync-time">${r.timestamp ? formatTimestamp(r.timestamp) : 'Menunggu telemetri...'}</strong>
+                        <span class="wifi-strip-title" data-i18n="mon.last_update">Pembaruan Terakhir</span>
+                        <strong class="wifi-strip-val" id="mon-last-sync-time">${r.timestamp ? formatTimestamp(r.timestamp) : (getLang() === 'en' ? 'Awaiting telemetry...' : 'Menunggu telemetri...')}</strong>
                     </div>
                 </div>
                 <div class="wifi-strip-divider"></div>
                 <div class="wifi-strip-item">
                     <span class="wifi-strip-icon">${icons.package}</span>
                     <div class="wifi-strip-meta">
-                        <span class="wifi-strip-title">Penyimpanan</span>
+                        <span class="wifi-strip-title" data-i18n="mon.storage">Penyimpanan</span>
                         <strong class="wifi-strip-val" id="mon-storage-mode">${isWifiOnline ? 'Cloud & MicroSD' : 'MicroSD'}</strong>
                     </div>
                 </div>
@@ -809,7 +1006,7 @@ async function renderMonitoringView() {
             <div class="grid-cards">
                 <div class="metric-card card-cyan">
                     <div class="metric-header">
-                        <span class="metric-label">Probe 1 (Atas)</span>
+                        <span class="metric-label" data-i18n="mon.probe1_label">Probe 1 (Inti Komoditas)</span>
                         <span class="metric-icon">${icons.thermometer}</span>
                     </div>
                     <div class="metric-value-row">
@@ -818,13 +1015,13 @@ async function renderMonitoringView() {
                     </div>
                     <div class="metric-footer">
                         <span class="metric-badge ${r.temperature_probe_1 !== null ? 'safe' : 'crit'}">DS18B20</span>
-                        <span>${r.temperature_probe_1 !== null ? 'Target Rantai Dingin' : 'Probe Belum Terdeteksi'}</span>
+                        <span>${r.temperature_probe_1 !== null ? (getLang() === 'en' ? 'Cargo Core (12 cm)' : 'Suhu Inti Kargo (12 cm)') : (getLang() === 'en' ? 'Probe Not Detected' : 'Probe Belum Terdeteksi')}</span>
                     </div>
                 </div>
 
                 <div class="metric-card card-cyan">
                     <div class="metric-header">
-                        <span class="metric-label">Probe 2 (Inti Daging)</span>
+                        <span class="metric-label" data-i18n="mon.probe2_label">Probe 2 (Buffer Es / Tengah)</span>
                         <span class="metric-icon">${icons.thermometer}</span>
                     </div>
                     <div class="metric-value-row">
@@ -833,13 +1030,13 @@ async function renderMonitoringView() {
                     </div>
                     <div class="metric-footer">
                         <span class="metric-badge ${r.temperature_probe_2 !== null ? 'safe' : 'crit'}">DS18B20</span>
-                        <span>${r.temperature_probe_2 !== null ? 'Pusat Sampel Kargo' : 'Probe Belum Terdeteksi'}</span>
+                        <span>${r.temperature_probe_2 !== null ? (getLang() === 'en' ? 'Latent Ice Buffer Layer' : 'Lapisan Es Penahan Panas') : (getLang() === 'en' ? 'Probe Not Detected' : 'Probe Belum Terdeteksi')}</span>
                     </div>
                 </div>
 
                 <div class="metric-card card-cyan">
                     <div class="metric-header">
-                        <span class="metric-label">Probe 3 (Pintu)</span>
+                        <span class="metric-label" data-i18n="mon.probe3_label">Probe 3 (Ambang Pintu)</span>
                         <span class="metric-icon">${icons.thermometer}</span>
                     </div>
                     <div class="metric-value-row">
@@ -848,13 +1045,13 @@ async function renderMonitoringView() {
                     </div>
                     <div class="metric-footer">
                         <span class="metric-badge ${r.temperature_probe_3 !== null ? 'safe' : 'crit'}">DS18B20</span>
-                        <span>${r.temperature_probe_3 !== null ? 'Area Bukaan Pintu' : 'Probe Belum Terdeteksi'}</span>
+                        <span>${r.temperature_probe_3 !== null ? (getLang() === 'en' ? 'Door Gasket Perimeter' : 'Perimeter Gasket Pintu') : (getLang() === 'en' ? 'Probe Not Detected' : 'Probe Belum Terdeteksi')}</span>
                     </div>
                 </div>
 
                 <div class="metric-card card-purple">
                     <div class="metric-header">
-                        <span class="metric-label">Sensor Lingkungan</span>
+                        <span class="metric-label" data-i18n="mon.env_label">Sensor Lingkungan</span>
                         <span class="metric-icon">${icons.cloudRain}</span>
                     </div>
                     <div class="metric-value-row">
@@ -882,7 +1079,7 @@ async function renderMonitoringView() {
                     </div>
                     <div class="metric-footer">
                         <span class="metric-badge ${r.door_status === 'OPEN' ? 'crit' : 'safe'}" id="badge-mon-door">MC-38</span>
-                        <span id="sub-mon-door">${r.door_status === 'OPEN' ? 'Peringatan: Pintu Terbuka!' : 'Tertutup Rapat'}</span>
+                        <span id="sub-mon-door">${r.door_status === 'OPEN' ? 'Pintu Terbuka' : 'Tertutup'}</span>
                     </div>
                 </div>
 
@@ -897,7 +1094,7 @@ async function renderMonitoringView() {
                     </div>
                     <div class="metric-footer">
                         <span class="metric-badge ${totalG && totalG > 2.0 ? 'crit' : 'safe'}" id="badge-mon-shock">MPU6050</span>
-                        <span id="sub-mon-shock">${totalG !== null ? (totalG > 2.0 ? 'Terdeteksi Sentakan Keras' : 'Getaran Normal') : 'Menunggu Data MPU'}</span>
+                        <span id="sub-mon-shock">${totalG !== null ? (totalG > 2.0 ? 'Guncangan Tinggi' : 'Getaran Normal') : 'Menunggu Data MPU'}</span>
                     </div>
                 </div>
 
@@ -916,15 +1113,15 @@ async function renderMonitoringView() {
 
                 <div class="metric-card ${r.risk_level === 'CRITICAL' ? 'card-danger' : (r.risk_level === 'WARNING' ? 'card-warning' : 'card-success')}" id="card-mon-risk">
                     <div class="metric-header">
-                        <span class="metric-label">Evaluasi Risiko AI</span>
+                        <span class="metric-label">Evaluasi Risiko</span>
                         <span class="metric-icon">${icons.zap}</span>
                     </div>
                     <div class="metric-value-row">
                         <span class="metric-value" id="mon-risk">${r.risk_level === 'CRITICAL' ? 'KRITIS' : (r.risk_level === 'WARNING' ? 'WASPADA' : 'AMAN')}</span>
                     </div>
                     <div class="metric-footer">
-                        <span class="metric-badge ${r.risk_level === 'CRITICAL' ? 'crit' : (r.risk_level === 'WARNING' ? 'warn' : 'safe')}" id="badge-mon-risk">Status AI</span>
-                        <span id="mon-risk-reason">${r.risk_reasons ? r.risk_reasons.replace(/DOOR_OPEN/g, 'Pintu Terbuka').replace(/TEMP_OUT_OF_BOUNDS/g, 'Suhu Diluar Batas').replace(/SHOCK_DETECTED/g, 'Guncangan Terdeteksi').replace(/Skor:/g, 'Skor AI: ') : 'Kondisi Normal'}</span>
+                        <span class="metric-badge ${r.risk_level === 'CRITICAL' ? 'crit' : (r.risk_level === 'WARNING' ? 'warn' : 'safe')}" id="badge-mon-risk">Status Risiko</span>
+                        <span id="mon-risk-reason">${r.risk_reasons ? r.risk_reasons.replace(/DOOR_OPEN/g, 'Pintu Terbuka').replace(/TEMP_OUT_OF_BOUNDS/g, 'Suhu Diluar Batas').replace(/SHOCK_DETECTED/g, 'Guncangan Terdeteksi').replace(/Skor:/g, 'Skor Risiko: ') : 'Kondisi Normal'}</span>
                     </div>
                 </div>
             </div>
@@ -933,26 +1130,26 @@ async function renderMonitoringView() {
             <div class="live-trace-panel">
                 <div class="live-trace-header">
                     <div class="trace-title-wrapper">
-                        <h2 class="panel-title" style="margin-bottom: 0;">${icons.telemetry} Grafik Suhu Tri-Probe (Live)</h2>
-                        <span class="live-beacon"><span class="beacon-dot"></span> Live (3d)</span>
+                        <h2 class="panel-title" style="margin-bottom: 0;">${icons.telemetry} Grafik Suhu Tri-Probe (Real-time)</h2>
+                        <span class="live-beacon"><span class="beacon-dot"></span> Real-time</span>
                     </div>
                     <div class="trace-pills-row">
-                        <div class="probe-pill p1" title="Suhu Permukaan Atas">
+                        <div class="probe-pill p1" title="Suhu Inti Komoditas (Kedalaman 12 cm)">
                             <span class="probe-dot"></span>
-                            <span>P1 Atas:</span>
+                            <span>P1 Inti:</span>
                             <strong id="trace-p1">${r.temperature_probe_1 !== null ? Number(r.temperature_probe_1).toFixed(1) + '°C' : '--'}</strong>
                         </div>
-                        <div class="probe-pill p2" title="Suhu Inti Daging/Ikan">
+                        <div class="probe-pill p2" title="Suhu Buffer Es Tengah">
                             <span class="probe-dot"></span>
-                            <span>P2 Inti:</span>
+                            <span>P2 Buffer:</span>
                             <strong id="trace-p2">${r.temperature_probe_2 !== null ? Number(r.temperature_probe_2).toFixed(1) + '°C' : '--'}</strong>
                         </div>
-                        <div class="probe-pill p3" title="Suhu Dekat Pintu">
+                        <div class="probe-pill p3" title="Suhu Ambang Pintu">
                             <span class="probe-dot"></span>
                             <span>P3 Pintu:</span>
                             <strong id="trace-p3">${r.temperature_probe_3 !== null ? Number(r.temperature_probe_3).toFixed(1) + '°C' : '--'}</strong>
                         </div>
-                        <div class="probe-pill thresh" title="Batas Aman Maksimal: -18°C">
+                        <div class="probe-pill thresh" title="Batas Aman Maksimum: -18.0°C">
                             <span class="probe-dot"></span>
                             <span>Batas:</span>
                             <strong>Maks -18.0°C</strong>
@@ -978,7 +1175,7 @@ async function renderMonitoringView() {
                         </div>
                         <div class="trace-stat-item">
                             <span>MKT:</span>
-                            <strong id="trace-mkt">${r.temperature_probe_2 !== null ? Number(r.temperature_probe_2).toFixed(1) + '°C' : (r.temperature_probe_1 !== null ? Number(r.temperature_probe_1).toFixed(1) + '°C' : '--')}</strong>
+                            <strong id="trace-mkt">${r.temperature_probe_1 !== null ? Number(r.temperature_probe_1).toFixed(1) + '°C' : (r.temperature_probe_2 !== null ? Number(r.temperature_probe_2).toFixed(1) + '°C' : '--')}</strong>
                         </div>
                     </div>
                     <div class="trace-stat-item" style="color: var(--text-muted);">
@@ -991,7 +1188,7 @@ async function renderMonitoringView() {
         renderLiveTelemetryChart(r);
 
     } catch (err) {
-        el.contentBody.innerHTML = `<div class="error-state">Failed to render live monitoring: ${err.message}</div>`;
+        el.contentBody.innerHTML = `<div class="error-state">Gagal memuat monitoring telemetri: ${err.message}</div>`;
     }
 }
 
@@ -1037,150 +1234,163 @@ async function renderLiveTelemetryChart(currentReading) {
     const maxVal = Math.ceil(Math.max(...allVals) + 3);
 
     // Buat gradient background yang mewah
+    // Probe 1: Inti Kargo (Ocean Sky Blue #0284c7)
     const gradP1 = ctx.createLinearGradient(0, 0, 0, 300);
-    gradP1.addColorStop(0, 'rgba(13, 148, 136, 0.22)');
-    gradP1.addColorStop(1, 'rgba(13, 148, 136, 0.0)');
+    gradP1.addColorStop(0, 'rgba(2, 132, 199, 0.22)');
+    gradP1.addColorStop(1, 'rgba(2, 132, 199, 0.0)');
 
+    // Probe 2: Buffer Es Tengah (Emerald Green #10b981)
     const gradP2 = ctx.createLinearGradient(0, 0, 0, 300);
-    gradP2.addColorStop(0, 'rgba(2, 132, 199, 0.20)');
-    gradP2.addColorStop(1, 'rgba(2, 132, 199, 0.0)');
+    gradP2.addColorStop(0, 'rgba(16, 185, 129, 0.20)');
+    gradP2.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
 
+    // Probe 3: Ambang Pintu (Amber Orange #f59e0b)
     const gradP3 = ctx.createLinearGradient(0, 0, 0, 300);
-    gradP3.addColorStop(0, 'rgba(99, 102, 241, 0.18)');
-    gradP3.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+    gradP3.addColorStop(0, 'rgba(245, 158, 11, 0.18)');
+    gradP3.addColorStop(1, 'rgba(245, 158, 11, 0.0)');
 
-    state.charts.liveChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: 'Probe 1 (Atas)',
-                    data: dataP1,
-                    borderColor: '#0d9488',
-                    backgroundColor: gradP1,
-                    fill: true,
-                    borderWidth: 2.5,
-                    tension: 0.35,
-                    pointRadius: 3.5,
-                    pointHoverRadius: 6,
-                    pointBackgroundColor: '#0d9488',
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 2
-                },
-                {
-                    label: 'Probe 2 (Inti Daging)',
-                    data: dataP2,
-                    borderColor: '#0284c7',
-                    backgroundColor: gradP2,
-                    fill: true,
-                    borderWidth: 2.5,
-                    tension: 0.35,
-                    pointRadius: 3.5,
-                    pointHoverRadius: 6,
-                    pointBackgroundColor: '#0284c7',
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 2
-                },
-                {
-                    label: 'Probe 3 (Pintu)',
-                    data: dataP3,
-                    borderColor: '#6366f1',
-                    backgroundColor: gradP3,
-                    fill: true,
-                    borderWidth: 2.5,
-                    tension: 0.35,
-                    pointRadius: 3.5,
-                    pointHoverRadius: 6,
-                    pointBackgroundColor: '#6366f1',
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 2
-                },
-                {
-                    label: 'Batas Aman Maks (-18°C)',
-                    data: dataThreshold,
-                    borderColor: '#ef4444',
-                    borderDash: [6, 4],
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    fill: false
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false
-            },
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        boxWidth: 12,
-                        boxHeight: 12,
-                        usePointStyle: true,
-                        pointStyle: 'circle',
-                        padding: 16,
-                        font: {
-                            family: "'Inter', sans-serif",
-                            size: 12,
-                            weight: 500
+            const isMobileLive = window.innerWidth <= 640;
+            state.charts.liveChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: isMobileLive ? 'P1 Inti (°C)' : 'Probe 1 • Inti Kargo (°C)',
+                            data: dataP1,
+                            borderColor: '#0284c7',
+                            backgroundColor: gradP1,
+                            fill: true,
+                            borderWidth: 2.5,
+                            tension: 0.35,
+                            pointRadius: isMobileLive ? 2.5 : 3.5,
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: '#0284c7',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 1.5
                         },
-                        color: '#475569'
-                    }
+                        {
+                            label: isMobileLive ? 'P2 Buffer (°C)' : 'Probe 2 • Buffer Es / Tengah (°C)',
+                            data: dataP2,
+                            borderColor: '#10b981',
+                            backgroundColor: gradP2,
+                            fill: true,
+                            borderWidth: 2.5,
+                            tension: 0.35,
+                            pointRadius: isMobileLive ? 2.5 : 3.5,
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: '#10b981',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 1.5
+                        },
+                        {
+                            label: isMobileLive ? 'P3 Pintu (°C)' : 'Probe 3 • Ambang Pintu (°C)',
+                            data: dataP3,
+                            borderColor: '#f59e0b',
+                            backgroundColor: gradP3,
+                            fill: true,
+                            borderWidth: 2.5,
+                            borderDash: [5, 4],
+                            tension: 0.35,
+                            pointRadius: isMobileLive ? 2.5 : 3.5,
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: '#f59e0b',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 1.5
+                        },
+                        {
+                            label: isMobileLive ? 'Batas (-18°C)' : 'Batas Kritis SNI / Codex (-18.0°C)',
+                            data: dataThreshold,
+                            borderColor: '#ef4444',
+                            borderDash: [6, 4],
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
                 },
-                tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.92)',
-                    titleFont: { family: "'Outfit', sans-serif", size: 13, weight: 600 },
-                    bodyFont: { family: "'Inter', sans-serif", size: 12 },
-                    padding: 12,
-                    cornerRadius: 8,
-                    boxPadding: 6,
-                    callbacks: {
-                        label: function(context) {
-                            const val = context.parsed.y;
-                            if (context.dataset.label.includes('Batas')) {
-                                return `🚨 ${context.dataset.label}: ${val.toFixed(1)}°C`;
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 0,
+                            right: isMobileLive ? 4 : 8,
+                            top: 0,
+                            bottom: 0
+                        }
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: isMobileLive ? 8 : 12,
+                                boxHeight: isMobileLive ? 8 : 12,
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                padding: isMobileLive ? 8 : 16,
+                                font: {
+                                    family: "'Inter', sans-serif",
+                                    size: isMobileLive ? 10.5 : 12,
+                                    weight: 500
+                                },
+                                color: '#475569'
                             }
-                            const diff = val - (-18.0);
-                            const status = diff > 0 ? `(⚠️ +${diff.toFixed(1)}°C Excursion)` : `(✅ Aman)`;
-                            return `${context.dataset.label}: ${val !== null ? val.toFixed(1) : '--'}°C ${status}`;
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.92)',
+                            titleFont: { family: "'Outfit', sans-serif", size: 12, weight: 600 },
+                            bodyFont: { family: "'Inter', sans-serif", size: 11 },
+                            padding: 10,
+                            cornerRadius: 8,
+                            boxPadding: 4,
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.parsed.y;
+                                    if (context.dataset.label.includes('Batas')) {
+                                        return `🚨 ${context.dataset.label}: ${val.toFixed(1)}°C`;
+                                    }
+                                    const diff = val - (-18.0);
+                                    const status = diff > 0 ? `(⚠️ +${diff.toFixed(1)}°C Deviasi)` : `(✅ Aman)`;
+                                    return `${context.dataset.label}: ${val !== null ? val.toFixed(1) : '--'}°C ${status}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: {
+                                color: 'rgba(226, 232, 240, 0.7)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#64748b',
+                                font: { family: "'Inter', sans-serif", size: isMobileLive ? 10 : 11 },
+                                callback: function(v) { return v + '°C'; }
+                            },
+                            suggestedMin: minVal,
+                            suggestedMax: maxVal
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(241, 245, 249, 0.9)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#64748b',
+                                font: { family: "'Inter', sans-serif", size: isMobileLive ? 10 : 11 },
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: isMobileLive ? 5 : 8
+                            }
                         }
                     }
                 }
-            },
-            scales: {
-                y: {
-                    grid: {
-                        color: 'rgba(226, 232, 240, 0.7)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#64748b',
-                        font: { family: "'Inter', sans-serif", size: 11 },
-                        callback: function(v) { return v + '°C'; }
-                    },
-                    suggestedMin: minVal,
-                    suggestedMax: maxVal
-                },
-                x: {
-                    grid: {
-                        color: 'rgba(241, 245, 249, 0.9)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#64748b',
-                        font: { family: "'Inter', sans-serif", size: 11 },
-                        maxRotation: 0,
-                        autoSkip: true,
-                        maxTicksLimit: 8
-                    }
-                }
-            }
-        }
-    });
+            });
 }
 
 // -------------------------------------------------------------
@@ -1217,7 +1427,7 @@ async function renderShipmentsView() {
                             ${shipments.length > 0 ? shipments.map(s => `
                                 <tr>
                                     <td class="mono-cell" style="font-weight: 700; color: var(--ice-blue);">${s.id}</td>
-                                    <td><span class="mono-cell">${s.device_id || 'Belum Ditaut'}</span></td>
+                                    <td><span class="mono-cell">${s.device_id || 'Belum Dihubungkan'}</span></td>
                                     <td><strong>${formatCommodityName(s.commodity)}</strong></td>
                                     <td>${s.origin || '-'}</td>
                                     <td>${s.destination || '-'}</td>
@@ -1232,7 +1442,7 @@ async function renderShipmentsView() {
                                         </div>
                                     </td>
                                 </tr>
-                            `).join('') : `<tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Belum ada kargo tercatat. Klik tombol Tambah Kargo untuk membuat baru!</td></tr>`}
+                            `).join('') : `<tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Belum ada data pengiriman terdaftar. Klik tombol Tambah Kargo untuk mendaftarkan kargo.</td></tr>`}
                         </tbody>
                     </table>
                 </div>
@@ -1243,27 +1453,25 @@ async function renderShipmentsView() {
         document.querySelectorAll('.btn-gps-shipment').forEach(btn => {
             btn.addEventListener('click', () => {
                 state.selectedShipmentId = btn.dataset.id;
-                window.location.hash = 'gps-track';
-                switchView('gps-track');
+                navigateTo('gps-track');
             });
         });
         document.querySelectorAll('.btn-dossier').forEach(btn => {
             btn.addEventListener('click', () => {
-                window.location.hash = 'reports';
-                switchView('reports');
+                navigateTo('reports');
             });
         });
         document.querySelectorAll('.btn-delete-shipment').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const id = btn.dataset.id;
-                if (!confirm(`Hapus kargo pelayaran ${id}? Data telemetry terkait tidak lagi terikat ke kargo ini.`)) return;
+                if (!confirm(`Konfirmasi: Hapus data pengiriman ${id}?`)) return;
                 try {
                     await api.deleteShipment(id);
                     if (state.selectedShipmentId === id) state.selectedShipmentId = null;
-                    showToast(`Kargo ${id} berhasil dihapus`, 'success');
+                    showToast(`Data pengiriman ${id} berhasil dihapus`, 'success');
                     renderShipmentsView();
                 } catch (e) {
-                    showToast(`Gagal menghapus kargo: ${e.message}`, 'error');
+                    showToast(`Gagal menghapus pengiriman: ${e.message}`, 'error');
                 }
             });
         });
@@ -1273,11 +1481,11 @@ async function renderShipmentsView() {
 }
 
 function showCreateShipmentModal() {
-    openModal('Tambah Kargo Baru', `
+    openModal('Tambah Pengiriman Baru', `
         <form id="form-create-shipment">
             <div class="form-grid">
                 <div class="form-group">
-                    <label>ID Kargo (Opsional / Otomatis)</label>
+                    <label>ID Pengiriman (Opsional)</label>
                     <input type="text" id="new-shipment-id" class="form-control" placeholder="Contoh: SHP-2026-001" />
                 </div>
                 <div class="form-group">
@@ -1286,28 +1494,28 @@ function showCreateShipmentModal() {
                 </div>
                 <div class="form-group">
                     <label>Jenis Komoditas</label>
-                    <input type="text" id="new-shipment-commodity" class="form-control" placeholder="Misal: Ikan Tuna Segar / Vaksin" required />
+                    <input type="text" id="new-shipment-commodity" class="form-control" placeholder="Contoh: Ikan Tuna Beku / Vaksin" required />
                 </div>
                 <div class="form-group">
                     <label>Pelabuhan Asal</label>
-                    <input type="text" id="new-shipment-origin" class="form-control" placeholder="Misal: Pelabuhan Muara Baru, Jakarta" required />
+                    <input type="text" id="new-shipment-origin" class="form-control" placeholder="Contoh: Pelabuhan Bitung" required />
                 </div>
                 <div class="form-group">
-                    <label>Depot / Tujuan Karantina</label>
-                    <input type="text" id="new-shipment-dest" class="form-control" placeholder="Misal: Depot Karantina Tanjung Priok" required />
+                    <label>Tujuan Karantina</label>
+                    <input type="text" id="new-shipment-dest" class="form-control" placeholder="Contoh: Tanjung Priok, Jakarta" required />
                 </div>
                 <div class="form-group">
-                    <label>Suhu Minimal (°C)</label>
+                    <label>Suhu Minimum (°C)</label>
                     <input type="number" id="new-shipment-min" class="form-control" value="0.0" step="0.5" required />
                 </div>
                 <div class="form-group">
-                    <label>Suhu Maksimal (°C)</label>
+                    <label>Suhu Maksimum (°C)</label>
                     <input type="number" id="new-shipment-max" class="form-control" value="4.0" step="0.5" required />
                 </div>
             </div>
             <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
                 <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-close').click()">Batal</button>
-                <button type="submit" class="btn btn-primary">Simpan Kargo</button>
+                <button type="submit" class="btn btn-primary">Simpan Data</button>
             </div>
         </form>
     `);
@@ -1692,7 +1900,7 @@ async function renderGpsView() {
                         </div>
 
                         <!-- Auto-Follow Camera Toggle -->
-                        <button class="btn btn-secondary btn-sm ${gpsLive.autoFollow ? 'btn-primary' : ''}" id="btn-toggle-autofollow" title="Kamera otomatis mengikuti posisi armada">
+                        <button class="btn ${gpsLive.autoFollow ? 'btn-primary' : 'btn-secondary'} btn-sm" id="btn-toggle-autofollow" title="Kamera otomatis mengikuti posisi armada">
                             ${icons.compass} <span id="autofollow-text">${gpsLive.autoFollow ? 'Ikuti: ON' : 'Ikuti: OFF'}</span>
                         </button>
 
@@ -1814,6 +2022,7 @@ async function renderGpsView() {
         btnAutoFollow?.addEventListener('click', () => {
             gpsLive.autoFollow = !gpsLive.autoFollow;
             btnAutoFollow.classList.toggle('btn-primary', gpsLive.autoFollow);
+            btnAutoFollow.classList.toggle('btn-secondary', !gpsLive.autoFollow);
             if (autoFollowText) autoFollowText.innerText = gpsLive.autoFollow ? 'Ikuti: ON' : 'Ikuti: OFF';
             showToast(`Mode ikuti armada: ${gpsLive.autoFollow ? 'ON' : 'OFF'}`, 'info');
         });
@@ -1952,7 +2161,7 @@ function initLeafletMap(validReadings = [], latest = null) {
                 <span class="status-pill NORMAL" style="font-size: 10px; padding: 2px 6px;">ONLINE</span>
             </div>
             <strong>Unit:</strong> ${state.selectedDeviceId}<br>
-            <strong>Status:</strong> LIVE MOVING GPS<br>
+            <strong>Status:</strong> Bergerak (Real-time)<br>
             <strong>Kecepatan:</strong> <span id="popup-speed">0.0 km/h</span><br>
             <strong>Arah Haluan:</strong> <span id="popup-heading">000°</span><br>
             <strong>Koordinat:</strong> <span id="popup-coords">${initialPos[0].toFixed(5)}, ${initialPos[1].toFixed(5)}</span>
@@ -2167,8 +2376,74 @@ function toggleGpsSimulation() {
 // -------------------------------------------------------------
 // VIEW 5: AI RISK & MKT ENGINE
 // -------------------------------------------------------------
+function translateRiskRecommendation(rec) {
+    if (!rec) return '';
+    const map = {
+        'Quarantine product immediately. Conduct microbial test and total volatile basic nitrogen (TVB-N) assay.':
+            'Karantina produk segera. Lakukan pengujian mikroba dan uji Total Volatile Basic Nitrogen (TVB-N).',
+        'Verify chain-of-custody log to validate authorized door openings.':
+            'Verifikasi log chain-of-custody untuk memvalidasi otorisasi pembukaan pintu kontainer/wadah.',
+        'Inspect package integrity and check core product temperature with calibrated probe.':
+            'Periksa integritas kemasan dan uji suhu inti produk menggunakan probe yang terkalibrasi.',
+        'Check container for structural damage, seal rupture, and secondary refrigerant loss.':
+            'Periksa struktur fisik kontainer dari kerusakan, kebocoran segel pintu, dan hilangnya media pendingin sekunder.',
+        'Cold-chain integrity maintained within safe limits. Eligible for fast-track clearance.':
+            'Integritas rantai dingin terjaga dalam batas aman. Memenuhi syarat penerbitan izin rilis jalur cepat (Jalur Hijau).',
+        'No sensor readings available for evaluation.':
+            'Tidak ada data pembacaan sensor yang tersedia untuk evaluasi.'
+    };
+    if (map[rec]) return map[rec];
+
+    if (/Quarantine product immediately/i.test(rec)) {
+        return 'Karantina produk segera. Lakukan pengujian mikroba dan uji Total Volatile Basic Nitrogen (TVB-N).';
+    }
+    if (/Verify chain-of-custody/i.test(rec)) {
+        return 'Verifikasi log chain-of-custody untuk memvalidasi otorisasi pembukaan pintu kontainer/wadah.';
+    }
+    if (/Inspect package integrity/i.test(rec)) {
+        return 'Periksa integritas kemasan dan uji suhu inti produk menggunakan probe yang terkalibrasi.';
+    }
+    if (/Check container for structural damage/i.test(rec)) {
+        return 'Periksa struktur fisik kontainer dari kerusakan, kebocoran segel pintu, dan hilangnya media pendingin sekunder.';
+    }
+    if (/Cold-chain integrity maintained/i.test(rec)) {
+        return 'Integritas rantai dingin terjaga dalam batas aman. Memenuhi syarat penerbitan izin rilis jalur cepat (Jalur Hijau).';
+    }
+    if (/No sensor readings available/i.test(rec)) {
+        return 'Tidak ada data pembacaan sensor yang tersedia untuk evaluasi.';
+    }
+    return rec;
+}
+
+function translateRiskFactor(f) {
+    if (!f) return { factor: '', severity: '', details: '' };
+    const factorMap = {
+        'Severe Temperature Abuse': 'Penyimpangan Suhu Kritis',
+        'Temperature Excursion': 'Fluktuasi Suhu Melebihi Batas',
+        'Severe Impact / Drop': 'Benturan Keras / Jatuh',
+        'Excessive Vibration / Shock': 'Getaran / Guncangan Berlebih',
+        'Repeated Door Breaches': 'Pelanggaran Buka-Tutup Pintu'
+    };
+
+    const factorName = factorMap[f.factor] || f.factor;
+    let details = f.details || '';
+
+    details = details
+        .replace(/(\d+)\s+readings exceeded critical threshold\s*\(([^)]+)\)/gi, '$1 pembacaan melampaui batas kritis ($2)')
+        .replace(/(\d+)\s+readings above upper safety threshold\s*\(([^)]+)\)/gi, '$1 pembacaan di atas batas aman ($2)')
+        .replace(/Peak shock\s+([\d\.]+)g\s+exceeded threshold\s*\(([^)]+)\)/gi, 'Puncak benturan $1g melampaui batas toleransi ($2)')
+        .replace(/Container opened\s+(\d+)\s+times during transit/gi, 'Pintu wadah dibuka $1 kali selama pengiriman transit');
+
+    return {
+        ...f,
+        factor: factorName,
+        details
+    };
+}
+
 async function renderRiskEngineView() {
-    el.contentBody.innerHTML = `<div class="loading-state">Menghitung analisis risiko AI dari telemetri perangkat...</div>`;
+    const isEn = getLang() === 'en';
+    el.contentBody.innerHTML = `<div class="loading-state">${isEn ? 'Loading risk evaluation...' : 'Memuat evaluasi risiko...'}</div>`;
     try {
         const shipmentsRes = await api.getShipments('active').catch(() => ({ shipments: [] }));
         const shipments = shipmentsRes.shipments || [];
@@ -2191,9 +2466,9 @@ async function renderRiskEngineView() {
                 const latestR = rList[0];
                 riskSc = latestR.risk_reasons ? parseInt(latestR.risk_reasons.replace(/[^0-9]/g, '')) || 0 : 0;
                 riskLv = latestR.risk_level || 'NORMAL';
-                const temps = rList.map(r => r.temperature_probe_2 ?? r.temperature_probe_1).filter(v => v !== null && !isNaN(v));
+                const temps = rList.map(r => r.temperature_probe_2 ?? r.temperature_probe_1).filter(v => v != null && !isNaN(Number(v)));
                 if (temps.length > 0) {
-                    mktVal = temps.reduce((a, b) => a + b, 0) / temps.length;
+                    mktVal = temps.reduce((a, b) => a + Number(b), 0) / temps.length;
                 }
             }
 
@@ -2205,75 +2480,108 @@ async function renderRiskEngineView() {
                     quality_retention_percent: Math.max(0, 100 - Math.round(riskSc * 0.75)),
                     shelf_life_loss_percent: Math.min(100, Math.round(riskSc * 0.75)),
                     factors: [
-                        { factor: 'Stabilitas Rantai Dingin', severity: riskLv, details: `Dievaluasi berdasarkan ${rList.length} titik rekaman sensor unit ${state.selectedDeviceId}` }
+                        { factor: isEn ? 'Cold-Chain Stability' : 'Stabilitas Rantai Dingin', severity: riskLv, details: isEn ? `Evaluated based on ${rList.length} sensor readings from unit ${state.selectedDeviceId}` : `Dievaluasi berdasarkan ${rList.length} titik rekaman sensor unit ${state.selectedDeviceId}` }
                     ],
                     recommendations: [
-                        riskLv === 'CRITICAL' ? 'Terdeteksi deviasi suhu kritis. Kargo memerlukan pengujian mutu laboratorium sebelum izin keluar diberikan.' : 'Kondisi suhu, guncangan, dan akses pintu terpantau stabil sesuai standar karantina.'
+                        riskLv === 'CRITICAL' 
+                            ? (isEn ? 'Critical temperature deviation detected. Cargo requires laboratory microbial testing prior to release.' : 'Terdeteksi deviasi suhu kritis. Kargo memerlukan pengujian mutu laboratorium sebelum izin keluar diberikan.') 
+                            : (isEn ? 'Temperature, shock, and container access monitored within quarantine safety standards.' : 'Kondisi suhu, guncangan, dan akses pintu terpantau stabil sesuai standar karantina.')
                     ]
                 }
             };
         }
 
-        const ev = evalData.evaluation;
+        const ev = evalData.evaluation || {};
+        const riskScore = Number(ev.overall_risk_score) || 0;
+        const riskLevel = ev.risk_level || 'NORMAL';
+        const isCrit = riskLevel === 'CRITICAL';
+        const isWarn = riskLevel === 'WARNING';
+        
+        // Robust MKT extraction: safely handles mkt_celsius, mkt, null, undefined, string
+        const rawMkt = (ev.mkt_celsius != null) ? ev.mkt_celsius : ((ev.mkt != null) ? ev.mkt : null);
+        const mktFormatted = (rawMkt != null && !isNaN(Number(rawMkt))) ? Number(rawMkt).toFixed(1) : '--';
+
+        const qualityRetention = (ev.quality_retention_percent != null && !isNaN(Number(ev.quality_retention_percent)))
+            ? Number(ev.quality_retention_percent)
+            : Math.max(0, 100 - Math.round(riskScore * 0.75));
+
+        const shelfLifeLoss = (ev.shelf_life_loss_percent != null && !isNaN(Number(ev.shelf_life_loss_percent)))
+            ? Number(ev.shelf_life_loss_percent)
+            : Math.min(100, Math.round(riskScore * 0.75));
+
+        const factors = Array.isArray(ev.factors) ? ev.factors : [];
+        const recommendations = Array.isArray(ev.recommendations) ? ev.recommendations : [];
+
+        const riskBadgeText = isCrit 
+            ? (isEn ? 'CRITICAL' : 'KRITIS') 
+            : (isWarn ? (isEn ? 'WARNING' : 'WASPADA') : (isEn ? 'SAFE' : 'AMAN'));
+
+        const dispositionText = isCrit
+            ? (isEn ? 'DETENTION (QUARANTINE)' : 'PENAHANAN')
+            : (isEn ? 'APPROVED (FAST-TRACK RELEASE)' : 'DISETUJUI (PELEPASAN)');
+
+        const dispositionSub = isCrit
+            ? (isEn ? 'Physical Inspection & Lab Assay' : 'Pemeriksaan Fisik & Uji Lab')
+            : (isEn ? 'Green Channel Fast-Track' : 'Jalur Hijau');
 
         el.contentBody.innerHTML = `
             <div class="grid-cards">
-                <div class="metric-card ${ev.overall_risk_score > 60 ? 'card-danger' : ev.overall_risk_score > 30 ? 'card-warning' : 'card-success'}">
+                <div class="metric-card ${riskScore > 60 ? 'card-danger' : riskScore > 30 ? 'card-warning' : 'card-success'}">
                     <div class="metric-header">
-                        <span class="metric-label">Skor Risiko Mutu</span>
+                        <span class="metric-label">${isEn ? 'Quality Risk Index' : 'Indeks Risiko Mutu'}</span>
                         <span class="metric-icon">${icons.brain}</span>
                     </div>
                     <div class="metric-value-row">
-                        <span class="metric-value">${ev.overall_risk_score}</span>
+                        <span class="metric-value">${riskScore}</span>
                         <span class="metric-unit">/ 100</span>
                     </div>
                     <div class="metric-footer">
-                        <span class="metric-badge ${ev.risk_level === 'CRITICAL' ? 'crit' : 'safe'}">${ev.risk_level === 'CRITICAL' ? 'KRITIS' : 'AMAN'}</span>
-                        <span>Evaluasi Suhu, Getaran & Pintu</span>
+                        <span class="metric-badge ${isCrit ? 'crit' : (isWarn ? 'warn' : 'safe')}">${riskBadgeText}</span>
+                        <span>${isEn ? 'Temperature, Shock & Door Parameters' : 'Parameter Suhu, Guncangan & Pintu'}</span>
                     </div>
                 </div>
 
                 <div class="metric-card card-cyan">
                     <div class="metric-header">
-                        <span class="metric-label">Suhu Rata-rata MKT</span>
+                        <span class="metric-label">${isEn ? 'Mean Kinetic Temp (MKT)' : 'Suhu Rata-rata MKT'}</span>
                         <span class="metric-icon">${icons.math}</span>
                     </div>
                     <div class="metric-value-row">
-                        <span class="metric-value">${ev.mkt_celsius !== null ? ev.mkt_celsius.toFixed(1) : '--'}</span>
+                        <span class="metric-value">${mktFormatted}</span>
                         <span class="metric-unit">°C</span>
                     </div>
                     <div class="metric-footer">
-                        <span class="metric-badge safe">Standar USP/WHO</span>
-                        <span>Model Kinetika Suhu</span>
+                        <span class="metric-badge safe">${isEn ? 'USP/WHO Standard' : 'Standar USP/WHO'}</span>
+                        <span>${isEn ? 'Thermal Kinetics Model' : 'Model Kinetika Suhu'}</span>
                     </div>
                 </div>
 
                 <div class="metric-card card-purple">
                     <div class="metric-header">
-                        <span class="metric-label">Retensi Mutu Produk</span>
+                        <span class="metric-label">${isEn ? 'Product Quality Retention' : 'Retensi Mutu Produk'}</span>
                         <span class="metric-icon">${icons.fish}</span>
                     </div>
                     <div class="metric-value-row">
-                        <span class="metric-value">${ev.quality_retention_percent}</span>
+                        <span class="metric-value">${qualityRetention}</span>
                         <span class="metric-unit">%</span>
                     </div>
                     <div class="metric-footer">
-                        <span class="metric-badge safe">Kualitas Fisik</span>
-                        <span>Penyusutan: -${ev.shelf_life_loss_percent}%</span>
+                        <span class="metric-badge safe">${isEn ? 'Physical Quality' : 'Kualitas Fisik'}</span>
+                        <span>${isEn ? `Loss: -${shelfLifeLoss}%` : `Penyusutan: -${shelfLifeLoss}%`}</span>
                     </div>
                 </div>
 
-                <div class="metric-card ${ev.risk_level === 'CRITICAL' ? 'card-danger' : 'card-success'}">
+                <div class="metric-card ${isCrit ? 'card-danger' : 'card-success'}">
                     <div class="metric-header">
-                        <span class="metric-label">Keputusan Karantina</span>
+                        <span class="metric-label">${isEn ? 'Quarantine Disposition' : 'Disposisi Karantina'}</span>
                         <span class="metric-icon">${icons.scale}</span>
                     </div>
                     <div class="metric-value-row">
-                        <span class="metric-value" style="font-size: 19px;">${ev.risk_level === 'CRITICAL' ? 'DITAHAN' : 'LOLOS / DILEPAS'}</span>
+                        <span class="metric-value" style="font-size: 19px;">${dispositionText}</span>
                     </div>
                     <div class="metric-footer">
-                        <span class="metric-badge ${ev.risk_level === 'CRITICAL' ? 'crit' : 'safe'}">Status Barantin</span>
-                        <span>${ev.risk_level === 'CRITICAL' ? 'Wajib Uji Lab Lanjutan' : 'Lolos Jalur Cepat'}</span>
+                        <span class="metric-badge ${isCrit ? 'crit' : 'safe'}">${isEn ? 'Quarantine Status' : 'Status Barantin'}</span>
+                        <span>${dispositionSub}</span>
                     </div>
                 </div>
             </div>
@@ -2281,25 +2589,30 @@ async function renderRiskEngineView() {
             <div class="row-2col">
                 <div class="panel">
                     <div class="panel-header">
-                        <h2 class="panel-title">${icons.flask} Rincian Parameter Risiko</h2>
+                        <h2 class="panel-title">${icons.flask} ${isEn ? 'Parameter Evaluation Details' : 'Rincian Evaluasi Parameter'}</h2>
                     </div>
                     <div class="table-wrapper">
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Parameter Uji</th>
-                                    <th>Tingkat</th>
-                                    <th>Keterangan</th>
+                                    <th>${isEn ? 'Test Parameter' : 'Parameter Uji'}</th>
+                                    <th>${isEn ? 'Level' : 'Tingkat'}</th>
+                                    <th>${isEn ? 'Description' : 'Keterangan'}</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${ev.factors.length > 0 ? ev.factors.map(f => `
+                                ${factors.length > 0 ? factors.map(f => {
+                                    const tf = isEn ? f : translateRiskFactor(f);
+                                    const sev = tf.severity || 'NORMAL';
+                                    const sevLabel = sev === 'CRITICAL' ? (isEn ? 'CRITICAL' : 'KRITIS') : (sev === 'WARNING' ? (isEn ? 'WARNING' : 'WASPADA') : (isEn ? 'NORMAL' : 'NORMAL'));
+                                    return `
                                     <tr>
-                                        <td><strong>${f.factor}</strong></td>
-                                        <td><span class="status-pill ${f.severity}">${f.severity === 'CRITICAL' ? 'KRITIS' : (f.severity === 'WARNING' ? 'WASPADA' : 'NORMAL')}</span></td>
-                                        <td>${f.details}</td>
+                                        <td><strong>${tf.factor || '--'}</strong></td>
+                                        <td><span class="status-pill ${sev}">${sevLabel}</span></td>
+                                        <td>${tf.details || '--'}</td>
                                     </tr>
-                                `).join('') : `<tr><td colspan="3" style="color: var(--text-muted); text-align: center;">Kondisi kargo stabil dan optimal.</td></tr>`}
+                                    `;
+                                }).join('') : `<tr><td colspan="3" style="color: var(--text-muted); text-align: center;">${isEn ? 'All cargo parameters within normal thresholds.' : 'Parameter kargo dalam batas normal.'}</td></tr>`}
                             </tbody>
                         </table>
                     </div>
@@ -2307,14 +2620,14 @@ async function renderRiskEngineView() {
 
                 <div class="panel">
                     <div class="panel-header">
-                        <h2 class="panel-title">${icons.fileText} Rekomendasi Petugas</h2>
+                        <h2 class="panel-title">${icons.fileText} ${isEn ? 'Quarantine Action Recommendations' : 'Rekomendasi Tindakan Karantina'}</h2>
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 12px;">
-                        ${ev.recommendations.map(rec => `
+                        ${recommendations.length > 0 ? recommendations.map(rec => `
                             <div style="background: var(--bg-surface-elevated); border-left: 4px solid var(--primary-cyan); padding: 14px; border-radius: var(--radius-sm); font-size: 13px; line-height: 1.5;">
-                                ${rec}
+                                ${isEn ? rec : translateRiskRecommendation(rec)}
                             </div>
-                        `).join('')}
+                        `).join('') : `<div style="color: var(--text-muted); font-size: 13px;">${isEn ? 'No specific actions required.' : 'Tidak ada tindakan khusus yang diperlukan.'}</div>`}
                     </div>
                 </div>
             </div>
@@ -2358,7 +2671,7 @@ async function renderAlertsView() {
                                 const eventTypeMap = {
                                     'TEMPERATURE_HIGH': 'Suhu Terlalu Tinggi',
                                     'TEMPERATURE_LOW': 'Suhu Terlalu Dingin',
-                                    'SHOCK_EXCESSIVE': 'Guncangan Ekstrem',
+                                    'SHOCK_EXCESSIVE': 'Guncangan Tinggi',
                                     'DOOR_OPEN': 'Pintu Terbuka',
                                     'DOOR_TAMPER': 'Pelanggaran Pintu',
                                     'POWER_FAILURE': 'Daya Listrik Padam',
@@ -2380,18 +2693,18 @@ async function renderAlertsView() {
                                     <td>${friendlyDesc}</td>
                                     <td>
                                         ${a.acknowledged ? 
-                                            `<span style="color: var(--status-normal); font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">${icons.check} Ditangani (${a.acknowledged_by || 'admin'})</span>` : 
-                                            `<span style="color: var(--status-critical); font-size: 12px; font-weight: 600;">Menunggu Cek</span>`
+                                            `<span style="color: var(--status-normal); font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">${icons.check} Dikonfirmasi (${a.acknowledged_by || 'admin'})</span>` : 
+                                            `<span style="color: var(--status-critical); font-size: 12px; font-weight: 600;">Belum Dikonfirmasi</span>`
                                         }
                                     </td>
                                     <td>
                                         ${!a.acknowledged ? 
-                                            `<button class="btn btn-primary btn-sm btn-ack-alert" data-id="${a.id}">Tandai Selesai</button>` : 
-                                            `<span style="color: var(--text-muted); font-size: 12px;">Diarsipkan</span>`
+                                            `<button class="btn btn-primary btn-sm btn-ack-alert" data-id="${a.id}">Konfirmasi Tindakan</button>` : 
+                                            `<span style="color: var(--text-muted); font-size: 12px;">Selesai</span>`
                                         }
                                     </td>
                                 </tr>
-                            `}).join('') : `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Tidak ada insiden atau deviasi suhu. Rantai dingin aman!</td></tr>`}
+                            `}).join('') : `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Tidak ada riwayat peringatan atau anomali.</td></tr>`}
                         </tbody>
                     </table>
                 </div>
@@ -2403,7 +2716,7 @@ async function renderAlertsView() {
                 const id = btn.dataset.id;
                 try {
                     await api.acknowledgeAlert(id);
-                    showToast(`Peringatan #${id} telah ditandai selesai`, 'success');
+                    showToast(`Peringatan #${id} berhasil dikonfirmasi`, 'success');
                     renderAlertsView();
                 } catch (err) {
                     showToast(`Gagal menandai: ${err.message}`, 'error');
@@ -2419,7 +2732,7 @@ async function renderAlertsView() {
 // VIEW 7: AUDIT REPORTS
 // -------------------------------------------------------------
 async function renderReportsView() {
-    el.contentBody.innerHTML = `<div class="loading-state">Menyusun Dokumen Pelepasan Karantina...</div>`;
+    el.contentBody.innerHTML = `<div class="loading-state">Memuat laporan karantina...</div>`;
     try {
         const shipmentsRes = await api.getShipments().catch(() => ({ shipments: [] }));
         const shipments = shipmentsRes.shipments || [];
@@ -2469,13 +2782,16 @@ async function renderReportsView() {
                 },
                 quarantine_disposition: {
                     verdict: isCrit ? 'HOLD_LAB_TEST' : 'PASSED',
-                    reason: isCrit ? 'Terdeteksi deviasi suhu kargo. Memerlukan pengujian fisik karantina.' : 'Suhu kargo dan kondisi fisik memenuhi standar rantai dingin.',
+                    reason: isCrit ? 'Terdeteksi deviasi suhu kargo. Memerlukan pengujian fisik dan laboratorium.' : 'Suhu kargo dan kondisi fisik memenuhi standar rantai dingin.',
                     recommended_action: isCrit ? 'Tahan kargo untuk pemeriksaan sampling laboratorium.' : 'Terbitkan Sertifikat Pelepasan Karantina Resmi.'
                 }
             };
         }
 
         const reportShipmentId = report.shipment?.id || state.selectedDeviceId;
+        const verdictLabel = report.quarantine_disposition.verdict === 'PASSED' 
+            ? 'DISETUJUI (PELEPASAN)' 
+            : (report.quarantine_disposition.verdict === 'HOLD_LAB_TEST' ? 'PENAHANAN & UJI LAB' : report.quarantine_disposition.verdict);
 
         el.contentBody.innerHTML = `
             <div class="panel">
@@ -2493,13 +2809,13 @@ async function renderReportsView() {
                 </div>
 
                 <div class="grid-cards" style="margin-bottom: 24px;">
-                    <div class="metric-card card-success">
+                    <div class="metric-card ${report.quarantine_disposition.verdict === 'PASSED' ? 'card-success' : 'card-danger'}">
                         <div class="metric-header">
-                            <span class="metric-label">Keputusan Karantina</span>
+                            <span class="metric-label">Disposisi Karantina</span>
                             <span class="metric-icon">${icons.landmark}</span>
                         </div>
                         <div class="metric-value-row">
-                            <span class="metric-value" style="font-size: 20px;">${report.quarantine_disposition.verdict === 'PASSED' ? 'LOLOS (PASSED)' : report.quarantine_disposition.verdict}</span>
+                            <span class="metric-value" style="font-size: 18px;">${verdictLabel}</span>
                         </div>
                         <div class="metric-footer">
                             <span>${report.quarantine_disposition.reason}</span>
@@ -2515,29 +2831,29 @@ async function renderReportsView() {
                             <span class="metric-value">${report.summary_metrics.cold_chain_compliance_percent}%</span>
                         </div>
                         <div class="metric-footer">
-                            <span>Penyimpangan: ${report.summary_metrics.excursions_count} kali</span>
+                            <span>Deviasi: ${report.summary_metrics.excursions_count} kali</span>
                         </div>
                     </div>
 
                     <div class="metric-card card-purple">
                         <div class="metric-header">
-                            <span class="metric-label">Data Terverifikasi</span>
+                            <span class="metric-label">Rekaman Telemetri</span>
                             <span class="metric-icon">${icons.barChart}</span>
                         </div>
                         <div class="metric-value-row">
                             <span class="metric-value">${report.summary_metrics.total_records}</span>
-                            <span class="metric-unit">pts</span>
+                            <span class="metric-unit">sampel</span>
                         </div>
                         <div class="metric-footer">
-                            <span>Terekam aman dan konsisten</span>
+                            <span>Validasi Checksum Integritas</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="panel" style="background: var(--bg-surface-elevated); margin-bottom: 20px;">
-                    <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--ice-blue);">Rekomendasi Petugas Karantina</h3>
+                    <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--ice-blue);">Rekomendasi Tindakan Karantina</h3>
                     <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
-                        ${report.quarantine_disposition.recommended_action} Kargo memenuhi seluruh kriteria mutu rantai dingin dan integritas fisik sesuai standar karantina.
+                        ${report.quarantine_disposition.recommended_action}
                     </p>
                 </div>
             </div>
@@ -2570,8 +2886,8 @@ async function renderSettingsView() {
             <div class="panel">
                 <div class="panel-header">
                     <div>
-                        <h2 class="panel-title">${icons.settings} Pengaturan Batas Regulasi Suhu</h2>
-                        <span style="font-size: 12px; color: var(--text-muted)">Atur ambang batas suhu, kelembaban, dan guncangan untuk deteksi bahaya otomatis.</span>
+                        <h2 class="panel-title">${icons.settings} Pengaturan Parameter Regulasi</h2>
+                        <span style="font-size: 12px; color: var(--text-muted)">Konfigurasi ambang batas parameter telemetri untuk evaluasi risiko otomatis.</span>
                     </div>
                 </div>
 
@@ -2594,16 +2910,16 @@ async function renderSettingsView() {
             <div class="panel" style="margin-top: 24px; border: 1px solid rgba(239, 68, 68, 0.3);">
                 <div class="panel-header">
                     <div>
-                        <h2 class="panel-title" style="color: #ef4444;">${icons.trash} Manajemen Data & Pembersihan Data Uji</h2>
-                        <span style="font-size: 12px; color: var(--text-muted)">Bersihkan seluruh data rekaman sensor dan simulasi lama agar dashboard mencatat 100% telemetri riil dari ESP32.</span>
+                        <h2 class="panel-title" style="color: #ef4444;">${icons.trash} Manajemen Data & Pembersihan Riwayat</h2>
+                        <span style="font-size: 12px; color: var(--text-muted)">Hapus data sensor dan log simulasi untuk mengosongkan riwayat unit.</span>
                     </div>
                 </div>
                 <div style="background: var(--bg-surface-elevated); padding: 16px; border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
                     <div>
-                        <strong style="font-size: 13px; color: var(--text-primary); display: block;">Kosongkan Riwayat Sensor & Log Peringatan</strong>
-                        <span style="font-size: 12px; color: var(--text-secondary);">Menghapus rekaman tabel sensor_readings dan risk_events untuk unit ${state.selectedDeviceId} agar sistem kembali bersih.</span>
+                        <strong style="font-size: 13px; color: var(--text-primary); display: block;">Hapus Riwayat Sensor & Log Peringatan</strong>
+                        <span style="font-size: 12px; color: var(--text-secondary);">Menghapus data rekaman tabel sensor_readings dan risk_events untuk unit ${state.selectedDeviceId}.</span>
                     </div>
-                    <button class="btn btn-danger" id="btn-purge-sensor-data">${icons.trash} Bersihkan Data Sensor</button>
+                    <button class="btn btn-danger" id="btn-purge-sensor-data">${icons.trash} Hapus Riwayat Sensor</button>
                 </div>
             </div>
         `;
@@ -2622,7 +2938,7 @@ async function renderSettingsView() {
         });
 
         document.getElementById('btn-purge-sensor-data')?.addEventListener('click', async () => {
-            if (!confirm(`Konfirmasi: Apakah Anda yakin ingin mengosongkan riwayat sensor unit ${state.selectedDeviceId}? Data lama akan dihapus agar dashboard menampilkan telemetri murni dari ESP32.`)) {
+            if (!confirm(`Konfirmasi: Apakah Anda yakin ingin menghapus seluruh riwayat sensor unit ${state.selectedDeviceId}?`)) {
                 return;
             }
             try {
@@ -2644,10 +2960,10 @@ async function renderSettingsView() {
 function updateDeviceDropdown() {
     if (!el.deviceSelect) return;
     el.deviceSelect.innerHTML = state.devices.map(d => `
-        <option value="${d.id}" ${d.id === state.selectedDeviceId ? 'selected' : ''}>
-            ${d.id} (${d.name || 'Unit'}) [${d.status}]
+        <option value="${d.id}" title="${d.id} (${d.name || 'Unit'}) [${d.status}]" ${d.id === state.selectedDeviceId ? 'selected' : ''}>
+            ${d.id} [${d.status}]
         </option>
-    `).join('') || `<option value="QGUARD-001">QGUARD-001 (Default)</option>`;
+    `).join('') || `<option value="QGUARD-001">QGUARD-001 [online]</option>`;
 }
 
 el.deviceSelect.addEventListener('change', (e) => {
@@ -2669,15 +2985,15 @@ function updateMonitoringRealtime(r) {
 
     const t1 = document.getElementById('mon-temp1');
     if (!t1) return;
-    t1.innerText = r.temperature_probe_1 !== null ? r.temperature_probe_1.toFixed(1) : '--';
+    t1.innerText = (r.temperature_probe_1 != null && !isNaN(Number(r.temperature_probe_1))) ? Number(r.temperature_probe_1).toFixed(1) : '--';
     const t2 = document.getElementById('mon-temp2');
-    if (t2) t2.innerText = r.temperature_probe_2 !== null ? r.temperature_probe_2.toFixed(1) : '--';
+    if (t2) t2.innerText = (r.temperature_probe_2 != null && !isNaN(Number(r.temperature_probe_2))) ? Number(r.temperature_probe_2).toFixed(1) : '--';
     const t3 = document.getElementById('mon-temp3');
-    if (t3) t3.innerText = r.temperature_probe_3 !== null ? r.temperature_probe_3.toFixed(1) : '--';
+    if (t3) t3.innerText = (r.temperature_probe_3 != null && !isNaN(Number(r.temperature_probe_3))) ? Number(r.temperature_probe_3).toFixed(1) : '--';
     const amb = document.getElementById('mon-ambient');
-    if (amb) amb.innerText = r.ambient_temperature !== null ? r.ambient_temperature.toFixed(1) : '--';
+    if (amb) amb.innerText = (r.ambient_temperature != null && !isNaN(Number(r.ambient_temperature))) ? Number(r.ambient_temperature).toFixed(1) : '--';
     const hum = document.getElementById('mon-humidity');
-    if (hum) hum.innerText = `${r.relative_humidity !== null ? r.relative_humidity.toFixed(0) : '--'}% RH`;
+    if (hum) hum.innerText = `${(r.relative_humidity != null && !isNaN(Number(r.relative_humidity))) ? Number(r.relative_humidity).toFixed(0) : '--'}% RH`;
     // 1. Status Pintu Kontainer (MC-38) - 100% Bahasa Indonesia
     const isDoorOpen = (r.door_status === 'OPEN');
     const door = document.getElementById('mon-door');
@@ -2687,7 +3003,7 @@ function updateMonitoringRealtime(r) {
     const badgeDoor = document.getElementById('badge-mon-door');
     if (badgeDoor) badgeDoor.className = `metric-badge ${isDoorOpen ? 'crit' : 'safe'}`;
     const subDoor = document.getElementById('sub-mon-door');
-    if (subDoor) subDoor.innerText = isDoorOpen ? 'Peringatan: Pintu Terbuka!' : 'Tertutup Rapat';
+    if (subDoor) subDoor.innerText = isDoorOpen ? 'Pintu Terbuka' : 'Tertutup';
 
     // 2. Guncangan & Getaran (MPU6050)
     const ax = r.acceleration_x || 0, ay = r.acceleration_y || 0, az = r.acceleration_z || 0;
@@ -2700,7 +3016,7 @@ function updateMonitoringRealtime(r) {
     const badgeShock = document.getElementById('badge-mon-shock');
     if (badgeShock) badgeShock.className = `metric-badge ${isShock ? 'crit' : 'safe'}`;
     const subShock = document.getElementById('sub-mon-shock');
-    if (subShock) subShock.innerText = totalG !== null ? (isShock ? 'Terdeteksi Sentakan Keras' : 'Getaran Normal') : 'Menunggu Data MPU';
+    if (subShock) subShock.innerText = totalG !== null ? (isShock ? 'Guncangan Tinggi' : 'Getaran Normal') : 'Menunggu Data MPU';
 
     // 3. Posisi GPS (NEO-6M)
     const isGpsFix = (r.gps_fix_status === 'FIX_3D' || r.gps_fix_status === '3D_FIX');
@@ -2713,7 +3029,7 @@ function updateMonitoringRealtime(r) {
             : 'Mencari Satelit (-- , --)';
     }
 
-    // 4. Evaluasi Risiko AI - 100% Bahasa Indonesia
+    // 4. Evaluasi Risiko - Bahasa Indonesia Standar
     const isCrit = (r.risk_level === 'CRITICAL');
     const isWarn = (r.risk_level === 'WARNING');
     const riskLabel = isCrit ? 'KRITIS' : (isWarn ? 'WASPADA' : 'AMAN');
@@ -2729,7 +3045,7 @@ function updateMonitoringRealtime(r) {
         rTxt = rTxt.replace(/DOOR_OPEN/g, 'Pintu Terbuka')
                    .replace(/TEMP_OUT_OF_BOUNDS/g, 'Suhu Diluar Batas')
                    .replace(/SHOCK_DETECTED/g, 'Guncangan Terdeteksi')
-                   .replace(/Skor:/g, 'Skor AI: ');
+                   .replace(/Skor:/g, 'Skor Risiko: ');
         reason.innerText = rTxt;
     }
     const ts = document.getElementById('mon-last-sample');
@@ -2737,11 +3053,11 @@ function updateMonitoringRealtime(r) {
 
     // Update Header Trace Badges & Gradient Stats
     const tr1 = document.getElementById('trace-p1');
-    if (tr1) tr1.innerText = `${r.temperature_probe_1 !== null ? r.temperature_probe_1.toFixed(1) : '--'}°C`;
+    if (tr1) tr1.innerText = `${(r.temperature_probe_1 != null && !isNaN(Number(r.temperature_probe_1))) ? Number(r.temperature_probe_1).toFixed(1) : '--'}°C`;
     const tr2 = document.getElementById('trace-p2');
-    if (tr2) tr2.innerText = `${r.temperature_probe_2 !== null ? r.temperature_probe_2.toFixed(1) : '--'}°C`;
+    if (tr2) tr2.innerText = `${(r.temperature_probe_2 != null && !isNaN(Number(r.temperature_probe_2))) ? Number(r.temperature_probe_2).toFixed(1) : '--'}°C`;
     const tr3 = document.getElementById('trace-p3');
-    if (tr3) tr3.innerText = `${r.temperature_probe_3 !== null ? r.temperature_probe_3.toFixed(1) : '--'}°C`;
+    if (tr3) tr3.innerText = `${(r.temperature_probe_3 != null && !isNaN(Number(r.temperature_probe_3))) ? Number(r.temperature_probe_3).toFixed(1) : '--'}°C`;
 
     const hasP1 = r.temperature_probe_1 !== null && !isNaN(Number(r.temperature_probe_1));
     const hasP3 = r.temperature_probe_3 !== null && !isNaN(Number(r.temperature_probe_3));
@@ -2763,7 +3079,7 @@ function updateMonitoringRealtime(r) {
     }
     const trMkt = document.getElementById('trace-mkt');
     if (trMkt) {
-        const mktVal = r.temperature_probe_2 !== null ? Number(r.temperature_probe_2) : (r.temperature_probe_1 !== null ? Number(r.temperature_probe_1) : null);
+        const mktVal = r.temperature_probe_1 !== null ? Number(r.temperature_probe_1) : (r.temperature_probe_2 !== null ? Number(r.temperature_probe_2) : null);
         trMkt.innerText = mktVal !== null ? `${mktVal.toFixed(1)}°C` : '--';
     }
 
@@ -2929,9 +3245,9 @@ function checkAuth() {
     
     // Not logged in
     state.user = null;
-    if (btnLandingLoginText) btnLandingLoginText.innerText = 'Login Petugas';
-    if (btnLandingMobileLoginText) btnLandingMobileLoginText.innerText = 'Login Petugas';
-    if (btnHeroDashboardText) btnHeroDashboardText.innerText = 'Masuk ke Dashboard';
+    if (btnLandingLoginText) btnLandingLoginText.innerText = 'Masuk Dashboard';
+    if (btnLandingMobileLoginText) btnLandingMobileLoginText.innerText = 'Masuk Dashboard';
+    if (btnHeroDashboardText) btnHeroDashboardText.innerText = 'Masuk Dashboard';
     return false;
 }
 
@@ -2941,8 +3257,7 @@ function setupAuthHandlers() {
         btnLandingLogin.addEventListener('click', (e) => {
             e.preventDefault();
             if (state.user) {
-                window.location.hash = 'overview';
-                switchView('overview');
+                navigateTo('overview');
             } else {
                 openLoginModal();
             }
@@ -2954,8 +3269,7 @@ function setupAuthHandlers() {
             e.preventDefault();
             if (landingMobileDrawer) landingMobileDrawer.classList.add('hidden');
             if (state.user) {
-                window.location.hash = 'overview';
-                switchView('overview');
+                navigateTo('overview');
             } else {
                 openLoginModal();
             }
@@ -2965,8 +3279,7 @@ function setupAuthHandlers() {
     if (btnHeroDashboard) {
         btnHeroDashboard.addEventListener('click', () => {
             if (state.user) {
-                window.location.hash = 'overview';
-                switchView('overview');
+                navigateTo('overview');
             } else {
                 openLoginModal();
             }
@@ -2988,7 +3301,7 @@ function setupAuthHandlers() {
             if (landingMobileDrawer) landingMobileDrawer.classList.add('hidden');
             const nav = link.dataset.nav;
             if (nav) {
-                window.location.hash = nav;
+                window.history.replaceState({}, '', `/#${nav}`);
                 showLandingPage(nav);
             }
         });
@@ -3001,7 +3314,7 @@ function setupAuthHandlers() {
     if (btnBackToHome) {
         btnBackToHome.addEventListener('click', () => {
             closeLoginModal();
-            window.location.hash = 'home';
+            window.history.replaceState({}, '', '/');
             showLandingPage('home');
         });
     }
@@ -3012,8 +3325,7 @@ function setupAuthHandlers() {
         footerLinkLogin.addEventListener('click', (e) => {
             e.preventDefault();
             if (state.user) {
-                window.location.hash = 'overview';
-                switchView('overview');
+                navigateTo('overview');
             } else {
                 openLoginModal();
             }
@@ -3070,9 +3382,9 @@ function setupAuthHandlers() {
                 if (el.loginErrorMsg) el.loginErrorMsg.classList.add('hidden');
                 checkAuth();
                 showToast('Login berhasil! Selamat datang di Q-GUARD Barantin', 'success');
-                const targetHash = isLandingHash(window.location.hash.replace('#', '')) ? 'overview' : window.location.hash.replace('#', '');
-                window.location.hash = targetHash;
-                switchView(targetHash);
+                const requestedView = getPathRoute();
+                const targetView = requestedView && ADMIN_ROUTES.has(requestedView) ? requestedView : 'overview';
+                navigateTo(targetView, { replace: true });
                 startPolling();
             } else {
                 if (el.loginErrorMsg) {
@@ -3084,18 +3396,24 @@ function setupAuthHandlers() {
         });
     }
 
-    // 3. Logout Handler
+    // 3. Logout Handlers (Desktop Topbar & Mobile Sidebar Drawer)
+    const handleLogout = (e) => {
+        if (e) e.preventDefault();
+        localStorage.removeItem('qguard_user');
+        localStorage.removeItem('qguard_token');
+        if (state.pollingInterval) clearInterval(state.pollingInterval);
+        checkAuth();
+        if (typeof closeMobileSidebar === 'function') closeMobileSidebar();
+        window.history.replaceState({}, '', '/');
+        showLandingPage('home');
+        showToast('Anda telah keluar dari dashboard.', 'info');
+    };
+
     if (el.btnLogout) {
-        el.btnLogout.addEventListener('click', (e) => {
-            e.preventDefault();
-            localStorage.removeItem('qguard_user');
-            localStorage.removeItem('qguard_token');
-            if (state.pollingInterval) clearInterval(state.pollingInterval);
-            checkAuth();
-            window.location.hash = 'home';
-            showLandingPage('home');
-            showToast('Anda telah keluar dari dashboard.', 'info');
-        });
+        el.btnLogout.addEventListener('click', handleLogout);
+    }
+    if (el.btnSidebarLogout) {
+        el.btnSidebarLogout.addEventListener('click', handleLogout);
     }
 }
 
@@ -3104,92 +3422,92 @@ function setupAuthHandlers() {
 // =========================================================================
 const SIM_SCENARIOS = {
     normal: {
-        tag: 'KONDISI: TERJAGA (OPTIMAL)',
+        tag: 'KONDISI: NORMAL',
         t1: '-21.8°C',
         t1Bar: '84%',
-        t1Status: '● Beku Aman (≤ -18°C)',
+        t1Status: '● Normal (≤ -18°C)',
         t1StatusClass: 'state-safe',
         t2: '-20.4°C',
         t2Bar: '78%',
-        t2Status: '● Suhu Optimal',
+        t2Status: '● Normal',
         t2StatusClass: 'state-safe',
         t3: '-18.6°C',
         t3Bar: '68%',
-        t3Status: '● Fluktuasi Eksternal Wajar',
+        t3Status: '● Normal',
         t3StatusClass: 'state-warn',
-        door: '🔒 Rapat (Tertutup)',
+        door: 'TERTUTUP',
         doorClass: 'text-success',
         vibration: '0.12 g (Normal)',
-        signal: '⚓ Selat Makassar (SD Buffer)',
+        signal: 'Selat Makassar (Buffer MicroSD)',
         mkt: '-20.9°C',
-        mktSub: 'Batas Kritis: ≤ -18.0°C (Lolos Kinetika)',
+        mktSub: 'Ambang Batas: ≤ -18.0°C',
         mktClass: 'text-success',
         aiScore: '0.08 / 1.00',
-        aiDesc: 'Kategori: Normal (Rantai Dingin Aman)',
+        aiDesc: 'Kategori: Normal',
         decisionClass: 'decision-green',
-        decisionPre: 'REKOMENDASI SISTEM INSPEKSI BARANTIN:',
-        decisionStatus: 'JALUR HIJAU (PASSED)',
-        decisionNote: 'Suhu inti -21.8°C konsisten aman. Kargo memenuhi standar Codex CAC/RCP 8-1976 dan langsung lolos Jalur Hijau.',
+        decisionPre: 'REKOMENDASI DISPOSISI:',
+        decisionStatus: 'JALUR HIJAU (PELEPASAN)',
+        decisionNote: 'Suhu inti -21.8°C konsisten stabil. Kargo memenuhi standar Codex CAC/RCP 8-1976 dan disetujui untuk pelepasan.',
         dossierId: 'Dossier ID: QG-BTG-2026-084',
         icon: '<polyline points="20 6 9 17 4 12"/>'
     },
     defrost: {
-        tag: 'KONDISI: SIKLUS DEFROST REFRIGERASI',
+        tag: 'KONDISI: SIKLUS DEFROST',
         t1: '-20.1°C',
         t1Bar: '75%',
-        t1Status: '● Inti Tetap Beku Sempurna',
+        t1Status: '● Suhu Inti Stabil',
         t1StatusClass: 'state-safe',
         t2: '-18.9°C',
         t2Bar: '70%',
-        t2Status: '● Lapisan Es Kokoh Terjaga',
+        t2Status: '● Buffer Stabil',
         t2StatusClass: 'state-safe',
         t3: '-13.5°C',
         t3Bar: '48%',
-        t3Status: '● Siklus Defrost Panas Gas (22 mnt)',
+        t3Status: '● Siklus Defrost (22 menit)',
         t3StatusClass: 'state-warn',
-        door: '🔒 Rapat (Tertutup)',
+        door: 'TERTUTUP',
         doorClass: 'text-success',
-        vibration: '0.14 g (Stabil)',
-        signal: '⚓ Selat Makassar (SD Buffer)',
+        vibration: '0.14 g (Normal)',
+        signal: 'Selat Makassar (Buffer MicroSD)',
         mkt: '-19.4°C',
-        mktSub: 'Batas Kritis: ≤ -18.0°C (Lolos Kinetika Arrhenius)',
+        mktSub: 'Ambang Batas: ≤ -18.0°C',
         mktClass: 'text-success',
         aiScore: '0.28 / 1.00',
-        aiDesc: 'Kategori: Defrost Normal (False Alarm Filtered)',
+        aiDesc: 'Kategori: Siklus Defrost Terverifikasi',
         decisionClass: 'decision-green',
-        decisionPre: 'REKOMENDASI SISTEM INSPEKSI BARANTIN:',
-        decisionStatus: 'JALUR HIJAU (DISPENSASI DEFROST)',
-        decisionNote: 'AI mendeteksi kenaikan udara adalah defrost wajar. Suhu inti komoditas tetap beku (-20.1°C), bebas alarm palsu.',
+        decisionPre: 'REKOMENDASI DISPOSISI:',
+        decisionStatus: 'JALUR KUNING (PEMERIKSAAN DOKUMEN)',
+        decisionNote: 'Kenaikan suhu udara ambang pintu teridentifikasi sebagai siklus defrost normal. Suhu inti kargo tetap stabil (-20.1°C).',
         dossierId: 'Dossier ID: QG-BTG-2026-085-DF',
         icon: '<polyline points="20 6 9 17 4 12"/>'
     },
     critical: {
-        tag: 'KONDISI: ANOMALI TERMAL KRITIS!',
+        tag: 'KONDISI: KRITIS',
         t1: '-10.4°C',
         t1Bar: '32%',
-        t1Status: '● KRITIS (> -18°C Thawing Resiko)',
+        t1Status: '● Deviasi Kritis (> -18°C)',
         t1StatusClass: 'state-danger',
         t2: '-7.8°C',
         t2Bar: '24%',
-        t2Status: '● Es Mencair Signifikan',
+        t2Status: '● Melebihi Ambang Batas',
         t2StatusClass: 'state-danger',
         t3: '-4.2°C',
         t3Bar: '14%',
-        t3Status: '● Kegagalan Sistem Kompresor',
+        t3Status: '● Suhu Ambang Tinggi',
         t3StatusClass: 'state-danger',
-        door: '⚠️ Log Terbuka / Rusak',
+        door: 'TERBUKA',
         doorClass: 'text-danger',
-        vibration: '0.68 g (Guncangan Keras)',
-        signal: '📶 Sinyal Terhubung (Auto-Sync 100%)',
+        vibration: '0.68 g (Sedang)',
+        signal: 'Sinkronisasi Aktif',
         mkt: '-7.6°C',
-        mktSub: 'BAHAYA: Melanggar Standar Codex > -18.0°C',
+        mktSub: 'Peringatan: Melampaui Batas Codex > -18.0°C',
         mktClass: 'text-danger',
         aiScore: '0.96 / 1.00',
-        aiDesc: 'Kategori: ANOMALI KRITIS (Thermal Breakdown)',
+        aiDesc: 'Kategori: Deviasi Suhu Kritis',
         decisionClass: 'decision-red',
-        decisionPre: 'PERINGATAN SISTEM INSPEKSI BARANTIN:',
-        decisionStatus: 'JALUR MERAH (INSPEKSI LAB WAJIB)',
-        decisionNote: 'Kompresor gagal: suhu inti naik hingga -10.4°C (> -18°C). Risiko pembusukan tinggi, kargo dialihkan ke Uji Lab.',
+        decisionPre: 'REKOMENDASI DISPOSISI:',
+        decisionStatus: 'JALUR MERAH (PENAHANAN & UJI LAB)',
+        decisionNote: 'Terjadi kenaikan suhu inti hingga -10.4°C (> -18°C). Diperlukan tindakan penahanan kargo dan pengujian laboratorium.',
         dossierId: 'Dossier ID: QG-BTG-2026-ERR-091',
         icon: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'
     }
@@ -3300,64 +3618,64 @@ function initLandingSimulator() {
 // =========================================================================
 const JOURNEY_STAGES = {
     1: {
-        badge: 'ETAPE 01: PELABUHAN ASAL BITUNG',
-        title: 'Insersi Tri-Probe & Verifikasi Titik Beku',
-        desc: 'Insersi 3 probe sensor pada komoditas ikan tuna dan buffer es sebelum segel karantina dipasang di Pelabuhan Bitung.',
+        badge: 'TAHAP 01: PELABUHAN BITUNG',
+        title: 'Pemasangan Probe & Verifikasi Titik Beku',
+        desc: 'Pemasangan 3 probe sensor pada komoditas dan buffer es sebelum penyegelan kontainer di Pelabuhan Bitung.',
         specs: [
-            { label: 'Protokol:', val: 'Verifikasi Pre-Cooling & Segel Karantina' },
+            { label: 'Protokol:', val: 'Pemeriksaan Awal & Penyegelan' },
             { label: 'Target Suhu Inti:', val: '≤ -20.0°C' },
             { label: 'Perangkat Aktif:', val: 'ESP32 + DS18B20 Array + RTC DS3231' }
         ],
         t1: '-22.4°C',
         t2: '-21.1°C',
         t3: '-19.5°C',
-        dataIntegrity: '100% Tercatat',
-        footer: 'Status: Pre-Cooling Sukses • Siap Berlayar Menuju Pelabuhan Tujuan'
+        dataIntegrity: 'Tercatat Penuh',
+        footer: 'Status: Verifikasi Awal Selesai • Siap Berangkat'
     },
     2: {
-        badge: 'ETAPE 02: PELAYARAN LAUT LEPAS (SELAT MAKASSAR)',
-        title: 'Pelayaran 36 Jam di Blankspot Maritim',
-        desc: 'Pelayaran 36 jam di zona tanpa sinyal. Telemetri otomatis disimpan di kartu MicroSD (FAT32) tanpa ada data yang hilang.',
+        badge: 'TAHAP 02: PELAYARAN SELAT MAKASSAR',
+        title: 'Pelayaran Transit Maritim',
+        desc: 'Perekaman telemetri selama pelayaran pada area tanpa sinyal seluler disimpan di MicroSD secara offline.',
         specs: [
-            { label: 'Kondisi Jaringan:', val: 'Blankspot Total (Offline-First)' },
-            { label: 'Penyimpanan:', val: 'MicroSD FAT32 Buffer (0% Data Loss)' },
-            { label: 'Frekuensi Logging:', val: '1 Rekaman per 15 Detik (RTC)' }
+            { label: 'Kondisi Jaringan:', val: 'Area Blankspot (Offline)' },
+            { label: 'Penyimpanan:', val: 'Buffer MicroSD' },
+            { label: 'Frekuensi Logging:', val: 'Interval 15 Detik (RTC DS3231)' }
         ],
         t1: '-21.8°C',
         t2: '-20.4°C',
         t3: '-18.6°C',
-        dataIntegrity: '8.640 Titik Buffer Aman',
-        footer: 'Status: Integritas Rantai Dingin Terjaga Selama 36 Jam Pelayaran'
+        dataIntegrity: '8.640 Titik Data Tersimpan',
+        footer: 'Status: Pemantauan Rantai Dingin Berjalan Normal'
     },
     3: {
-        badge: 'ETAPE 03: LAST-MILE ROAD TRANSIT (SURABAYA)',
-        title: 'Bongkar Muat & Distribusi Truk Berpendingin',
-        desc: 'Kontainer dipindahkan ke truk pendingin darat. Sensor memantau getaran jalan (MPU6050) dan integritas buka-tutup pintu (MC-38).',
+        badge: 'TAHAP 03: TRANSIT DARAT SURABAYA',
+        title: 'Distribusi Truk Berpendingin',
+        desc: 'Pemindahan muatan ke truk pendingin dengan pemantauan guncangan jalan (MPU6050) dan status pintu (MC-38).',
         specs: [
-            { label: 'Sensor Gerak:', val: 'MPU6050 (Guncangan Jalan Maks 0.28 g)' },
-            { label: 'Audit Pintu:', val: 'Saklar Magnet MC-38 (Pintu Tertutup Rapat)' },
-            { label: 'Konektivitas:', val: 'Sinkronisasi Otomatis Seluler 4G LTE' }
+            { label: 'Sensor Gerak:', val: 'MPU6050 (Akselerometer)' },
+            { label: 'Sensor Pintu:', val: 'Saklar Magnetik MC-38' },
+            { label: 'Konektivitas:', val: 'Sinkronisasi Otomatis 4G LTE' }
         ],
         t1: '-20.6°C',
         t2: '-19.2°C',
         t3: '-17.8°C',
-        dataIntegrity: '100% Data Tersinkronisasi',
-        footer: 'Status: Truk Tiba di Pos Inspeksi Karantina Barantin'
+        dataIntegrity: 'Sinkronisasi Data Lengkap',
+        footer: 'Status: Armada Tiba di Pos Pemeriksaan Karantina'
     },
     4: {
-        badge: 'ETAPE 04: GERBANG PERBATASAN BARANTIN',
-        title: 'Verifikasi Cepat & Pelepasan Jalur Hijau',
-        desc: 'Evaluasi instan suhu kinetik MKT dan anomali AI. Berkas digital Quarantine Inspection Dossier diterbitkan dalam < 5 menit.',
+        badge: 'TAHAP 04: POS PEMERIKSAAN KARANTINA',
+        title: 'Verifikasi & Penetapan Disposisi',
+        desc: 'Evaluasi parameter kinetika suhu MKT dan analisis data sensor untuk penerbitan dokumen disposisi karantina.',
         specs: [
-            { label: 'Waktu Validasi:', val: '< 5 Menit (Clearance Instan)' },
-            { label: 'Disposisi:', val: 'JALUR HIJAU (PASSED - Surat Pelepasan Terbit)' },
-            { label: 'Keamanan Berkas:', val: 'Tanda Tangan Digital Terenkripsi SHA-256' }
+            { label: 'Waktu Proses:', val: '< 5 Menit' },
+            { label: 'Disposisi:', val: 'JALUR HIJAU (Pelepasan Komoditas)' },
+            { label: 'Integritas Berkas:', val: 'Validasi Checksum Digital SHA-256' }
         ],
         t1: '-20.9°C',
         t2: '-19.8°C',
         t3: '-18.4°C',
-        dataIntegrity: 'Audit Trail 100% Lolos',
-        footer: 'Status: Komoditas Dilepas Resmi • Standar Mutu Barantin Terpenuhi'
+        dataIntegrity: 'Audit Trail Terverifikasi',
+        footer: 'Status: Komoditas Disetujui untuk Pelepasan'
     }
 };
 
@@ -3412,16 +3730,118 @@ function initLandingJourney() {
     });
 }
 
+// Lightweight conceptual 3D hero: pointer drag rotates the device and container.
+function initHeroDeviceStage() {
+    const viewport = document.getElementById('device-viewport');
+    const model = document.getElementById('device-model');
+    const container = document.getElementById('cold-container');
+    if (!viewport || !model || !container) return;
+
+    let dragging = false;
+    let startX = 0;
+    let startY = 0;
+    let rotateX = -5;
+    let rotateY = -18;
+
+    const render = () => {
+        model.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+        container.style.transform = `rotateX(${rotateX * 0.35}deg) rotateY(${rotateY * 0.25}deg)`;
+    };
+
+    const stopDrag = () => {
+        dragging = false;
+        viewport.classList.remove('is-dragging');
+    };
+
+    viewport.addEventListener('pointerdown', (event) => {
+        dragging = true;
+        startX = event.clientX;
+        startY = event.clientY;
+        viewport.setPointerCapture?.(event.pointerId);
+        viewport.classList.add('is-dragging');
+    });
+    viewport.addEventListener('pointermove', (event) => {
+        if (!dragging) return;
+        rotateY += (event.clientX - startX) * 0.45;
+        rotateX = Math.max(-20, Math.min(18, rotateX - (event.clientY - startY) * 0.2));
+        startX = event.clientX;
+        startY = event.clientY;
+        render();
+    });
+    viewport.addEventListener('pointerup', stopDrag);
+    viewport.addEventListener('pointercancel', stopDrag);
+    viewport.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowLeft') rotateY -= 8;
+        else if (event.key === 'ArrowRight') rotateY += 8;
+        else if (event.key === 'ArrowUp') rotateX = Math.max(-20, rotateX - 5);
+        else if (event.key === 'ArrowDown') rotateX = Math.min(18, rotateX + 5);
+        else return;
+        event.preventDefault();
+        render();
+    });
+    render();
+}
+
 // Init Application
 (function init() {
-    setupAuthHandlers();
-    initLandingSimulator();
-    initLandingJourney();
-    checkAuth();
-    const currentHash = window.location.hash.replace('#', '');
-    const initialView = currentHash || (state.user ? 'overview' : 'home');
-    switchView(initialView);
-    if (state.user) {
-        startPolling();
+    // Initialize internationalization (i18n)
+    try {
+        initI18n();
+    } catch (e) {
+        console.warn('[Q-GUARD] initI18n error:', e);
     }
+
+    // Re-render active dashboard view or update UI on language change
+    window.addEventListener('languageChanged', () => {
+        if (state.user && ADMIN_ROUTES.has(state.currentView)) {
+            renderCurrentView();
+        }
+    });
+
+    setupAuthHandlers();
+    
+    // Bind bottom CTA login button
+    const btnCtaLogin = document.getElementById('btn-cta-login');
+    if (btnCtaLogin) {
+        btnCtaLogin.addEventListener('click', () => {
+            if (state.user) {
+                navigateTo('overview');
+            } else {
+                openLoginModal();
+            }
+        });
+    }
+
+    // Initialize 3D Floating Reefer & Hardware Viewport and Scenario Simulator
+    try {
+        initHero3D();
+    } catch (e) {
+        console.warn('[Q-GUARD] initHero3D error:', e);
+    }
+
+    try {
+        initSimulator();
+    } catch (e) {
+        console.warn('[Q-GUARD] initSimulator error:', e);
+    }
+
+    checkAuth();
+
+    const pathRoute = getPathRoute();
+    const legacyHash = window.location.hash.replace('#', '').trim();
+    const legacyRoute = ADMIN_ROUTES.has(legacyHash) ? legacyHash : null;
+
+    if (pathRoute && ADMIN_ROUTES.has(pathRoute)) {
+        switchView(pathRoute);
+    } else if (legacyRoute) {
+        window.history.replaceState({ view: legacyRoute }, '', getRouteUrl(legacyRoute));
+        switchView(legacyRoute);
+    } else {
+        showLandingPage(isLandingHash(legacyHash) ? legacyHash : 'home');
+        if (legacyHash && !isLandingHash(legacyHash)) {
+            window.history.replaceState({}, '', '/');
+        }
+    }
+
+    if (state.user) startPolling();
 })();

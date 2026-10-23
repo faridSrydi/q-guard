@@ -53,23 +53,42 @@ function evaluateRisk(readings, thresholds = {}) {
             risk_level: 'NORMAL',
             status: 'NO_DATA',
             mkt: null,
+            mkt_celsius: null,
+            mkt_probe_1: null,
+            mkt_probe_2: null,
+            mkt_probe_3: null,
+            max_thermal_gradient_c: null,
+            quality_retention_percent: 100,
+            shelf_life_loss_percent: 0,
             factors: [],
-            recommendations: ['No sensor readings available for evaluation.']
+            recommendations: ['Tidak ada data pembacaan sensor yang tersedia untuk evaluasi.']
         };
     }
 
-    const temps = [];
+    const tempsP1 = [];
+    const tempsP2 = [];
+    const tempsP3 = [];
+    const primaryTemps = [];
+
     let highTempExcursions = 0;
     let criticalHighExcursions = 0;
+    let boundaryExcursions = 0;
     let severeLowExcursions = 0;
     let doorOpenCount = 0;
     let maxShockG = 0;
+    let maxThermalGradient = 0;
     let totalReadings = readings.length;
 
     for (const r of readings) {
-        const t1 = r.temperature_probe_1 !== null && !isNaN(r.temperature_probe_1) ? r.temperature_probe_1 : r.ambient_temperature;
-        if (t1 !== null && !isNaN(t1)) {
-            temps.push(t1);
+        const t1 = r.temperature_probe_1 !== null && !isNaN(r.temperature_probe_1) ? r.temperature_probe_1 : null;
+        const t2 = r.temperature_probe_2 !== null && !isNaN(r.temperature_probe_2) ? r.temperature_probe_2 : null;
+        const t3 = r.temperature_probe_3 !== null && !isNaN(r.temperature_probe_3) ? r.temperature_probe_3 : null;
+        const amb = r.ambient_temperature !== null && !isNaN(r.ambient_temperature) ? r.ambient_temperature : null;
+
+        // Core probe
+        if (t1 !== null) {
+            tempsP1.push(t1);
+            primaryTemps.push(t1);
             if (t1 > tempMax) {
                 highTempExcursions++;
                 if (t1 > (tempMax + 5)) {
@@ -78,22 +97,47 @@ function evaluateRisk(readings, thresholds = {}) {
             } else if (t1 < (tempMin - 5)) {
                 severeLowExcursions++;
             }
+        } else if (amb !== null) {
+            primaryTemps.push(amb);
+        }
+
+        // Mid-pack probe
+        if (t2 !== null) tempsP2.push(t2);
+
+        // Door boundary probe
+        if (t3 !== null) {
+            tempsP3.push(t3);
+            if (t3 > tempMax && (t1 === null || t1 <= tempMax)) {
+                boundaryExcursions++;
+            }
+        }
+
+        // Thermal gradient between boundary and core (|T3 - T1|)
+        if (t3 !== null && t1 !== null) {
+            const grad = Math.abs(t3 - t1);
+            if (grad > maxThermalGradient) maxThermalGradient = grad;
         }
 
         if (r.door_status === 'OPEN') {
             doorOpenCount++;
         }
 
+        // Net dynamic shock (subtracting 1.0g gravity baseline)
         const ax = r.acceleration_x || 0;
         const ay = r.acceleration_y || 0;
         const az = r.acceleration_z || 0;
-        const gForce = Math.sqrt(ax * ax + ay * ay + az * az);
-        if (gForce > maxShockG) {
-            maxShockG = gForce;
+        const totalG = Math.sqrt(ax * ax + ay * ay + az * az);
+        const netShock = Math.abs(totalG - 1.0);
+        if (netShock > maxShockG) {
+            maxShockG = netShock;
         }
     }
 
-    const mkt = calculateMKT(temps);
+    // USP/FDA Arrhenius Mean Kinetic Temperature
+    const mkt = calculateMKT(primaryTemps.length > 0 ? primaryTemps : tempsP1);
+    const mktP1 = calculateMKT(tempsP1);
+    const mktP2 = calculateMKT(tempsP2);
+    const mktP3 = calculateMKT(tempsP3);
 
     // Score components (0-100 scale)
     let tempScore = 0;
@@ -107,36 +151,45 @@ function evaluateRisk(readings, thresholds = {}) {
     if (criticalHighExcursions > 0) {
         tempScore += 50 + Math.min(criticalHighExcursions * 10, 40);
         factors.push({
-            factor: 'Severe Temperature Abuse',
+            factor: 'Penyimpangan Suhu Kritis (Inti)',
             severity: 'CRITICAL',
-            details: `${criticalHighExcursions} readings exceeded severe threshold (${tempMax + 5}°C)`
+            details: `${criticalHighExcursions} pembacaan melampaui batas kritis (${tempMax + 5}°C)`
         });
-        recommendations.push('Quarantine product immediately. Conduct microbial test and total volatile basic nitrogen (TVB-N) assay.');
+        recommendations.push('Karantina produk segera. Lakukan pengujian mikroba dan uji Total Volatile Basic Nitrogen (TVB-N).');
     } else if (highTempExcursions > 0) {
         tempScore += Math.min(excursionRatio * 80 + highTempExcursions * 5, 65);
         factors.push({
-            factor: 'Temperature Excursion',
+            factor: 'Fluktuasi Suhu Melebihi Batas (Inti)',
             severity: 'WARNING',
-            details: `${highTempExcursions} readings above safe maximum (${tempMax}°C)`
+            details: `${highTempExcursions} pembacaan di atas batas aman (${tempMax}°C)`
         });
-        recommendations.push('Inspect package integrity and check core product temperature with calibrated probe.');
+        recommendations.push('Periksa integritas kemasan dan uji suhu inti produk menggunakan probe yang terkalibrasi.');
+    } else if (boundaryExcursions > 0) {
+        // Early warning: boundary infiltration detected while core remained safe
+        tempScore += Math.min(boundaryExcursions * 3, 25);
+        factors.push({
+            factor: 'Peringatan Dini Penetrasi Kalor Pintu',
+            severity: 'CAUTION',
+            details: `${boundaryExcursions} pembacaan probe pintu melampaui batas aman (${tempMax}°C) sementara suhu inti tetap terjaga`
+        });
+        recommendations.push('Periksa kerapatan gasket pintu wadah/kontainer dan kondisi insulasi di area bibir penutup.');
     }
 
-    // 2. Physical Shock
+    // 2. Physical Shock (Net dynamic g-force)
     if (maxShockG > shockThreshold * 1.5) {
         physicalScore += 70;
         factors.push({
-            factor: 'Severe Impact / Drop',
+            factor: 'Benturan Keras / Jatuh',
             severity: 'CRITICAL',
-            details: `Peak impact ${maxShockG.toFixed(2)}g exceeded threshold (${shockThreshold}g)`
+            details: `Puncak benturan bersih ${maxShockG.toFixed(2)}g melampaui batas toleransi (${shockThreshold}g)`
         });
-        recommendations.push('Check container for structural damage, seal rupture, and secondary refrigerant loss.');
+        recommendations.push('Periksa struktur fisik kontainer dari kerusakan, kebocoran segel pintu, dan hilangnya media pendingin sekunder.');
     } else if (maxShockG > shockThreshold) {
         physicalScore += 40;
         factors.push({
-            factor: 'Excessive Vibration / Shock',
+            factor: 'Getaran / Guncangan Berlebih',
             severity: 'WARNING',
-            details: `Peak impact ${maxShockG.toFixed(2)}g exceeded threshold (${shockThreshold}g)`
+            details: `Puncak guncangan bersih ${maxShockG.toFixed(2)}g melampaui batas toleransi (${shockThreshold}g)`
         });
     }
 
@@ -144,16 +197,16 @@ function evaluateRisk(readings, thresholds = {}) {
     if (doorOpenCount > 5) {
         integrityScore += 50;
         factors.push({
-            factor: 'Repeated Door Breaches',
+            factor: 'Pelanggaran Buka-Tutup Pintu',
             severity: 'WARNING',
-            details: `Door opened ${doorOpenCount} times during transit`
+            details: `Pintu wadah dibuka ${doorOpenCount} kali selama pengiriman transit`
         });
-        recommendations.push('Verify chain-of-custody log to validate authorized door openings.');
+        recommendations.push('Verifikasi log chain-of-custody untuk memvalidasi otorisasi pembukaan pintu kontainer/wadah.');
     } else if (doorOpenCount > 0) {
         integrityScore += 20;
     }
 
-    // Overall weighted score
+    // Overall weighted score (CACCR 60/25/15)
     const overallRiskScore = Math.min(Math.round(
         tempScore * 0.60 + physicalScore * 0.25 + integrityScore * 0.15
     ), 100);
@@ -164,7 +217,7 @@ function evaluateRisk(readings, thresholds = {}) {
     else if (overallRiskScore >= 30) riskLevel = 'CAUTION';
 
     if (recommendations.length === 0) {
-        recommendations.push('Cold-chain integrity maintained within safe limits. Eligible for fast-track clearance.');
+        recommendations.push('Integritas rantai dingin terjaga dalam batas aman. Memenuhi syarat penerbitan izin rilis jalur cepat (Jalur Hijau).');
     }
 
     // Quality Retention Index (Rough estimate: 100% minus score * 0.8)
@@ -175,12 +228,17 @@ function evaluateRisk(readings, thresholds = {}) {
         overall_risk_score: overallRiskScore,
         risk_level: riskLevel,
         mkt_celsius: mkt,
+        mkt_probe_1: mktP1,
+        mkt_probe_2: mktP2,
+        mkt_probe_3: mktP3,
+        max_thermal_gradient_c: Math.round(maxThermalGradient * 10) / 10,
         quality_retention_percent: qualityRetentionPercent,
         shelf_life_loss_percent: shelfLifeLossPercent,
         statistics: {
             total_readings: totalReadings,
             high_temp_excursions: highTempExcursions,
             critical_high_excursions: criticalHighExcursions,
+            boundary_early_warnings: boundaryExcursions,
             door_open_events: doorOpenCount,
             peak_shock_g: Math.round(maxShockG * 100) / 100
         },
@@ -206,7 +264,7 @@ router.get('/summary', optionalAuth, (req, res) => {
 
         for (const s of activeShipments) {
             const readings = db.prepare(`
-                SELECT temperature_probe_1, ambient_temperature, acceleration_x, acceleration_y, acceleration_z, door_status
+                SELECT temperature_probe_1, temperature_probe_2, temperature_probe_3, ambient_temperature, acceleration_x, acceleration_y, acceleration_z, door_status
                 FROM sensor_readings
                 WHERE shipment_id = ?
                 ORDER BY timestamp DESC

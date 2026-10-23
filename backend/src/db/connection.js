@@ -107,12 +107,6 @@ function getDb() {
         close: () => rawDb.close()
     };
 
-    // Auto-clean simulated remnants so the system always displays real quarantine data
-    try {
-        db.prepare("UPDATE shipments SET commodity = 'Ikan Tuna Segar (Ekspor)' WHERE commodity LIKE '%SIMULATED%'").run();
-        db.prepare("DELETE FROM sensor_readings WHERE timestamp LIKE '2045%' OR timestamp LIKE '%82-39%'").run();
-    } catch (e) {}
-
     return db;
 }
 

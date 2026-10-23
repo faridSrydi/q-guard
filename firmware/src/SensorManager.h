@@ -130,6 +130,11 @@ private:
     
     int _probeCount;
     
+    // DS18B20 async conversion timing
+    unsigned long _conversionRequestedMs;
+    bool _conversionReady;
+    static const unsigned long DS18B20_CONVERSION_MS = 750; // 12-bit resolution
+    
     // Door state tracking
     bool _doorPreviousState;
     unsigned long _doorOpenStartMs;
@@ -141,6 +146,7 @@ private:
     void _updateHealthSummary();
     
     bool _isValidTemperature(float t);
+    bool _detectDoorSensorFloat();
 };
 
 #endif // SENSOR_MANAGER_H

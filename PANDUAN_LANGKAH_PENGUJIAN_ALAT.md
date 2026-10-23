@@ -117,6 +117,43 @@ Panduan ini disusun untuk memandu tim dalam melakukan pengujian eksperimental pr
 
 ---
 
+### SKENARIO 6 (SANGAT DIREKOMENDASIKAN): Uji Operasional Lapangan Nyata (Field Trial Sepeda Motor & Komoditas Ikan Asli)
+* **Urgensi Ilmiah:** Pengujian ini adalah **nilai plus terbesar bagi juri QIC 2026**. Membuktikan bahwa Q-GUARD bukan sekadar alat di atas meja, melainkan instrumen tangguh yang teruji di kondisi jalanan tropis nyata Indonesia (*real-world archipelagic distribution*).
+* **1. Persiapan Komoditas Ikan Asli & Coolbox:**
+  - **Wadah:** Coolbox styrofoam atau plastik (kapasitas 15–30 liter) diikat erat pada jok belakang sepeda motor.
+  - **Komoditas:** Ikan laut beku (misalnya 1–2 kg ikan tongkol, cakalang, bandeng, atau tuna loin dari pasar/supermarket).
+  - **Pendingin:** Es batu balok atau *ice gel packs* secukupnya.
+  - **Pemasangan Probe Tri-Probe pada Ikan:**
+    - **T1 (Core):** Ditusukkan masuk ke bagian tengah daging ikan terdalam.
+    - **T2 (Mid):** Diselipkan di antara ikan dan tumpukan es di tengah boks.
+    - **T3 (Door):** Ditaruh di permukaan paling atas dekat celah tutup coolbox (titik yang paling terpapar panas terik matahari dan angin motor).
+  - **Sensor Pintu (MC-38):** Dipasang pada bibir boks dan tutupnya.
+  - **Power:** Diberi daya baterai Li-Po / Powerbank 5V yang diletakkan aman di dalam boks/saku boks.
+* **2. Rekomendasi Jarak & Rute Perjalanan Motor:**
+  - **Jarak Ideal:** Cukup **10 s.d. 20 km** (atau rute bolak-balik sekitar 15–25 km).
+  - **Durasi Ideal:** **45 s.d. 90 menit** berkendara.
+  - **Karakteristik Medan Jalan:** 
+    - Lintasi jalan aspal biasa, jalan bergelombang/polisi tidur (untuk membuktikan sensor getaran MPU6050 mendeteksi guncangan nyata $> 1.5g - 2.5g$).
+    - Melintasi area terbuka agar modul GPS NEO-6M mengunci sinyal (*3D Fix*) dan merekam rute geospasial lintang & bujur.
+    - Lakukan 1 kali simulasi buka tutup coolbox selama 30 detik di tengah jalan (simulasi inspeksi kurir) untuk memicu interupsi sensor MC-38.
+* **3. Apa yang Terjadi Selama Perjalanan Motor?**
+  - Selama motor berjalan (tanpa ada Wi-Fi), ESP32 mencatat data setiap 5 detik ke **MicroSD** (suhu tri-probe, koordinat GPS, getaran $g$-force, stempel waktu RTC).
+  - Indikator Wi-Fi di alat akan menampilkan mode *offline blackbox logging*.
+* **4. Langkah Saat Tiba di Tujuan (Gerbang Inspeksi Simulasi):**
+  - Bawa boks/alat masuk ke area yang ada Wi-Fi/Hotspot (tempat laptop server Q-GUARD aktif).
+  - Begitu terhubung kembali ke Wi-Fi, amati:
+    1. ESP32 otomatis mengunggah seluruh rekaman data MicroSD ke peladen cloud (hanya butuh 3–5 detik).
+    2. Buka dashboard web menu **Peta Pelayaran GPS** (`/#gps-track`): Rute perjalanan motor Anda langsung terpetakan dari titik awal hingga tujuan!
+    3. Buka menu **Telemetri Langsung** (`/#monitoring`): Terlihat grafik suhu asli bagaimana terik panas matahari mulai menghangatkan probe pintu (T3), tetapi probe inti daging ikan (T1) tetap dingin terjaga.
+    4. Buka menu **Laporan Karantina** (`/#reports`): Cetak *Quarantine Inspection Dossier* resmi yang mencantumkan nama komoditas ikan asli, rute GPS, dan skor risiko komposit CACCR.
+* **5. Dokumentasi Foto Wajib untuk Full Paper:**
+  - Foto coolbox berisi ikan asli dan kabel probe tertancap di daging ikan.
+  - Foto coolbox dan alat Q-GUARD terpasang di atas motor.
+  - Foto layar TFT Q-GUARD saat di jalan (menampilkan grafik suhu & koordinat GPS).
+  - Tangkapan layar Peta Pelayaran GPS di dashboard yang menampilkan garis rute perjalanan motor Anda.
+
+---
+
 ## BAGIAN 3: PANDUAN PENEMPATAN HASIL UJI KE DALAM FULL PAPER
 
 Buka file [docs/FULLPAPER_QIC_2026_QGUARD.md](file:///c:/Users/LENOVO/Desktop/QGUARD/docs/FULLPAPER_QIC_2026_QGUARD.md), lalu masukkan data hasil pengujian pada **BAB III, Subbab 3.4**:

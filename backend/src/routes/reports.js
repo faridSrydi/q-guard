@@ -35,14 +35,19 @@ router.get('/shipment/:id', optionalAuth, (req, res) => {
             ORDER BY created_at ASC
         `).all(req.params.id);
 
-        // Compute metrics
+        // Compute tri-probe metrics
         let minT1 = Infinity, maxT1 = -Infinity, sumT1 = 0, countT1 = 0;
+        let minT2 = Infinity, maxT2 = -Infinity, sumT2 = 0, countT2 = 0;
+        let minT3 = Infinity, maxT3 = -Infinity, sumT3 = 0, countT3 = 0;
         let minAmb = Infinity, maxAmb = -Infinity, sumAmb = 0, countAmb = 0;
+        let maxThermalGradient = 0;
         let maxShock = 0;
         let excursionsCount = 0;
+        let boundaryWarningsCount = 0;
         const gpsTrack = [];
 
         for (const r of readings) {
+            // Probe 1 (Core)
             if (r.temperature_probe_1 !== null && !isNaN(r.temperature_probe_1)) {
                 const t = r.temperature_probe_1;
                 if (t < minT1) minT1 = t;
@@ -53,6 +58,36 @@ router.get('/shipment/:id', optionalAuth, (req, res) => {
                     excursionsCount++;
                 }
             }
+
+            // Probe 2 (Mid-pack)
+            if (r.temperature_probe_2 !== null && !isNaN(r.temperature_probe_2)) {
+                const t = r.temperature_probe_2;
+                if (t < minT2) minT2 = t;
+                if (t > maxT2) maxT2 = t;
+                sumT2 += t;
+                countT2++;
+            }
+
+            // Probe 3 (Door boundary)
+            if (r.temperature_probe_3 !== null && !isNaN(r.temperature_probe_3)) {
+                const t = r.temperature_probe_3;
+                if (t < minT3) minT3 = t;
+                if (t > maxT3) maxT3 = t;
+                sumT3 += t;
+                countT3++;
+                if (t > shipment.temp_max && (r.temperature_probe_1 === null || r.temperature_probe_1 <= shipment.temp_max)) {
+                    boundaryWarningsCount++;
+                }
+            }
+
+            // Thermal gradient (|T3 - T1|)
+            if (r.temperature_probe_3 !== null && r.temperature_probe_1 !== null &&
+                !isNaN(r.temperature_probe_3) && !isNaN(r.temperature_probe_1)) {
+                const grad = Math.abs(r.temperature_probe_3 - r.temperature_probe_1);
+                if (grad > maxThermalGradient) maxThermalGradient = grad;
+            }
+
+            // Ambient (BME280)
             if (r.ambient_temperature !== null && !isNaN(r.ambient_temperature)) {
                 const a = r.ambient_temperature;
                 if (a < minAmb) minAmb = a;
@@ -60,8 +95,11 @@ router.get('/shipment/:id', optionalAuth, (req, res) => {
                 sumAmb += a;
                 countAmb++;
             }
-            const g = Math.sqrt((r.acceleration_x||0)**2 + (r.acceleration_y||0)**2 + (r.acceleration_z||0)**2);
-            if (g > maxShock) maxShock = g;
+
+            // Net dynamic shock minus 1g gravity baseline
+            const totalG = Math.sqrt((r.acceleration_x||0)**2 + (r.acceleration_y||0)**2 + (r.acceleration_z||0)**2);
+            const netG = Math.abs(totalG - 1.0);
+            if (netG > maxShock) maxShock = netG;
 
             if (r.latitude && r.longitude) {
                 gpsTrack.push({
@@ -74,18 +112,23 @@ router.get('/shipment/:id', optionalAuth, (req, res) => {
         }
 
         const avgT1 = countT1 > 0 ? (sumT1 / countT1) : null;
+        const avgT2 = countT2 > 0 ? (sumT2 / countT2) : null;
+        const avgT3 = countT3 > 0 ? (sumT3 / countT3) : null;
         const avgAmb = countAmb > 0 ? (sumAmb / countAmb) : null;
         const complianceRate = countT1 > 0 ? Math.round(((countT1 - excursionsCount) / countT1) * 1000) / 10 : 100;
 
         // Quarantine disposition recommendation
         let quarantineVerdict = 'PASSED';
-        let verdictReason = 'Temperature maintained within allowable cold-chain bounds throughout voyage.';
+        let verdictReason = 'Suhu terjaga dalam batas aman rantai dingin selama perjalanan transit.';
         if (complianceRate < 80 || (maxT1 !== -Infinity && maxT1 > shipment.temp_max + 4)) {
             quarantineVerdict = 'REJECTED_QUARANTINE';
-            verdictReason = 'Severe cold-chain failure. Temperature exceeded safe maximum for significant period.';
+            verdictReason = 'Kegagalan rantai dingin kritis. Suhu inti melampaui batas aman maksimal untuk durasi signifikan.';
         } else if (complianceRate < 95 || excursionsCount > 0) {
             quarantineVerdict = 'CONDITIONAL_INSPECTION';
-            verdictReason = 'Minor excursion detected. Physical inspection and sensory evaluation recommended prior to clearance.';
+            verdictReason = 'Penyimpangan minor terdeteksi. Disarankan inspeksi fisik dan uji organoleptik sebelum izin rilis diberikan.';
+        } else if (boundaryWarningsCount > 0) {
+            quarantineVerdict = 'CONDITIONAL_INSPECTION';
+            verdictReason = 'Penetrasi panas terdeteksi di probe pintu wadah. Lakukan inspeksi visual kemasan luar sebelum rilis.';
         }
 
         res.json({
@@ -97,10 +140,24 @@ router.get('/shipment/:id', optionalAuth, (req, res) => {
                 monitoring_start: readings.length > 0 ? readings[0].timestamp : shipment.started_at,
                 monitoring_end: readings.length > 0 ? readings[readings.length - 1].timestamp : null,
                 temp_probe_1: {
+                    name: 'Core (Inti)',
                     min: countT1 > 0 ? Math.round(minT1 * 10) / 10 : null,
                     max: countT1 > 0 ? Math.round(maxT1 * 10) / 10 : null,
                     avg: avgT1 !== null ? Math.round(avgT1 * 10) / 10 : null
                 },
+                temp_probe_2: {
+                    name: 'Mid-Pack (Tengah)',
+                    min: countT2 > 0 ? Math.round(minT2 * 10) / 10 : null,
+                    max: countT2 > 0 ? Math.round(maxT2 * 10) / 10 : null,
+                    avg: avgT2 !== null ? Math.round(avgT2 * 10) / 10 : null
+                },
+                temp_probe_3: {
+                    name: 'Door Boundary (Pintu)',
+                    min: countT3 > 0 ? Math.round(minT3 * 10) / 10 : null,
+                    max: countT3 > 0 ? Math.round(maxT3 * 10) / 10 : null,
+                    avg: avgT3 !== null ? Math.round(avgT3 * 10) / 10 : null
+                },
+                max_thermal_gradient_c: Math.round(maxThermalGradient * 10) / 10,
                 ambient_temp: {
                     min: countAmb > 0 ? Math.round(minAmb * 10) / 10 : null,
                     max: countAmb > 0 ? Math.round(maxAmb * 10) / 10 : null,
@@ -108,14 +165,15 @@ router.get('/shipment/:id', optionalAuth, (req, res) => {
                 },
                 peak_impact_g: Math.round(maxShock * 100) / 100,
                 excursions_count: excursionsCount,
+                boundary_warnings_count: boundaryWarningsCount,
                 cold_chain_compliance_percent: complianceRate
             },
             quarantine_disposition: {
                 verdict: quarantineVerdict,
                 reason: verdictReason,
                 recommended_action: quarantineVerdict === 'PASSED' 
-                    ? 'Issue Smart Quarantine Certificate of Release.' 
-                    : 'Place batch into cold quarantine hold pending lab test.'
+                    ? 'Terbitkan Sertifikat Pelepasan Karantina Resmi (Smart Quarantine Certificate of Release).' 
+                    : 'Karantina produk segera. Lakukan sampling laboratorium dan uji kadar TVB-N/mikrobiologi.'
             },
             alerts_count: alerts.length,
             gps_waypoint_count: gpsTrack.length,

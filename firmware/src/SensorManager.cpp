@@ -12,6 +12,8 @@ SensorManager::SensorManager()
       _mpuInitialized(false),
       _doorInitialized(false),
       _probeCount(0),
+      _conversionRequestedMs(0),
+      _conversionReady(false),
       _doorPreviousState(false),
       _doorOpenStartMs(0) {
     
@@ -119,11 +121,19 @@ bool SensorManager::begin() {
     // --- MC-38 Door Sensor ---
     pinMode(PIN_DOOR_SENSOR, INPUT);
     _doorInitialized = true;
-    _reading.door.status = SENSOR_OK;
-    _doorPreviousState = digitalRead(PIN_DOOR_SENSOR) == HIGH;
-    anySuccess = true;
-    Serial.printf("[SensorManager] MC-38: OK on GPIO%d (initial: %s)\n", 
-        PIN_DOOR_SENSOR, _doorPreviousState ? "OPEN" : "CLOSED");
+    
+    // Detect floating pin (missing external pull-up resistor)
+    if (_detectDoorSensorFloat()) {
+        _reading.door.status = SENSOR_ERROR;
+        _doorInitialized = false;
+        Serial.printf("[SensorManager] MC-38: ERROR on GPIO%d — pin floating, check pull-up resistor\n", PIN_DOOR_SENSOR);
+    } else {
+        _reading.door.status = SENSOR_OK;
+        _doorPreviousState = digitalRead(PIN_DOOR_SENSOR) == HIGH;
+        anySuccess = true;
+        Serial.printf("[SensorManager] MC-38: OK on GPIO%d (initial: %s)\n", 
+            PIN_DOOR_SENSOR, _doorPreviousState ? "OPEN" : "CLOSED");
+    }
     
     _updateHealthSummary();
     
@@ -150,11 +160,26 @@ const SensorReading& SensorManager::getReading() const {
 void SensorManager::_readDS18B20() {
     if (!_dallasInitialized) return;
     
-    _dallas.requestTemperatures();
+    unsigned long now = millis();
     
-    // Allow time for conversion (12-bit = ~750ms, but we do async)
-    // In practice, we read the previous conversion result
+    // Phase 1: If no conversion in progress, start one
+    if (_conversionRequestedMs == 0) {
+        _dallas.requestTemperatures();
+        _conversionRequestedMs = now;
+        _conversionReady = false;
+        return; // Don't read yet — conversion takes ~750ms at 12-bit
+    }
     
+    // Phase 2: Check if conversion is complete
+    if (!_conversionReady) {
+        if ((now - _conversionRequestedMs) >= DS18B20_CONVERSION_MS) {
+            _conversionReady = true;
+        } else {
+            return; // Still converting — skip this read cycle
+        }
+    }
+    
+    // Phase 3: Read the completed conversion results
     for (int i = 0; i < min(_probeCount, 3); i++) {
         if (!_reading.probes[i].addressValid) continue;
         
@@ -168,6 +193,11 @@ void SensorManager::_readDS18B20() {
             _reading.probes[i].status = SENSOR_ERROR;
         }
     }
+    
+    // Start next conversion immediately after reading
+    _dallas.requestTemperatures();
+    _conversionRequestedMs = now;
+    _conversionReady = false;
 }
 
 void SensorManager::_readBME280() {
@@ -323,4 +353,28 @@ String SensorManager::addressToString(const DeviceAddress& addr) {
         addr[0], addr[1], addr[2], addr[3],
         addr[4], addr[5], addr[6], addr[7]);
     return String(buf);
+}
+
+bool SensorManager::_detectDoorSensorFloat() {
+    // Rapidly sample the door sensor pin 20 times over ~100ms.
+    // A properly connected sensor (with pull-up) will read consistently.
+    // A floating pin will show random high/low transitions.
+    int transitions = 0;
+    bool lastState = digitalRead(PIN_DOOR_SENSOR) == HIGH;
+    
+    for (int i = 0; i < 20; i++) {
+        delay(5);
+        bool currentState = digitalRead(PIN_DOOR_SENSOR) == HIGH;
+        if (currentState != lastState) {
+            transitions++;
+            lastState = currentState;
+        }
+    }
+    
+    // More than 5 transitions in 100ms = floating pin
+    if (transitions > 5) {
+        Serial.printf("[SensorManager] Door sensor float detected: %d transitions in 100ms\n", transitions);
+        return true;
+    }
+    return false;
 }
