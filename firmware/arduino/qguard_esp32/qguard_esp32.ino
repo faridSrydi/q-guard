@@ -299,6 +299,16 @@ void beepSuccess() {
   digitalWrite(PIN_BUZZER, LOW);
 }
 
+void beepWifiConnected() {
+  // Melodi nada sambung Wi-Fi (3 tangga nada renyah: pip - pip - piiip!)
+  digitalWrite(PIN_BUZZER, HIGH); delay(35);
+  digitalWrite(PIN_BUZZER, LOW);  delay(25);
+  digitalWrite(PIN_BUZZER, HIGH); delay(45);
+  digitalWrite(PIN_BUZZER, LOW);  delay(25);
+  digitalWrite(PIN_BUZZER, HIGH); delay(90);
+  digitalWrite(PIN_BUZZER, LOW);
+}
+
 void beepWarning() {
   // Hanya matikan suara jika mode Mute Alarm aktif
   if (buzzerMuteTotal || millis() < alarmMuteUntil) return;
@@ -970,6 +980,7 @@ void connectToStation(const String& ssid, const String& pass) {
   WiFi.disconnect(true);
   delay(100);
   WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
   WiFi.begin(ssid.c_str(), pass.c_str());
   wifiState = WIFI_STATE_CONNECTING;
   wifiConnectStartTime = millis();
@@ -3149,7 +3160,7 @@ void loop() {
   if (wifiState == WIFI_STATE_CONNECTING) {
     if (WiFi.status() == WL_CONNECTED) {
       wifiState = WIFI_STATE_CONNECTED;
-      beepSuccess();
+      beepWifiConnected();
       Serial.printf("[WIFI] BERHASIL TERHUBUNG! IP ESP32: %s\n", WiFi.localIP().toString().c_str());
 
       // Auto-Sync waktu akurat dari Internet NTP (WIB = GMT+7)
