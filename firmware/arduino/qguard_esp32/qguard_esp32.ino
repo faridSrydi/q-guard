@@ -225,6 +225,8 @@ int historyIndex = 0;
 unsigned long lastSampleTime = 0;
 unsigned long lastDisplayRefresh = 0;
 unsigned long lastSdLogTime = 0;
+unsigned long lastSdSyncTime = 0;   // Interval sinkronisasi offline MicroSD ke Dashboard
+uint32_t sdSyncOffset = 0;          // Posisi byte rekaman di MicroSD yang sudah terkirim ke dashboard
 unsigned long lastLedBlinkTime = 0;
 unsigned long alarmMuteUntil = 0;
 bool buzzerMuteTotal = false; // Status Mute Total Buzzer (Toggle 3x Klik Tombol Merah)
@@ -935,6 +937,7 @@ void loadWifiPreferences() {
   } else {
     appLang = LANG_ID;
   }
+  sdSyncOffset = preferences.getULong("sd_sync_pos", 0);
   preferences.end();
 
   if (cMin > -100.0f && cMax > -100.0f) {
@@ -1295,6 +1298,153 @@ void sendTelemetryToBackend() {
     Serial.printf("[CLOUD] Terkirim ke server (%s) - HTTP %d\n", serverUrl.c_str(), httpCode);
   } else {
     Serial.printf("[CLOUD] Gagal kirim: %s\n", http.errorToString(httpCode).c_str());
+  }
+  http.end();
+}
+
+// ============================================================================
+// 12C. SINKRONISASI OTOMATIS DATA REKAMAN OFFLINE DARI MICROSD KE DASHBOARD
+// ============================================================================
+void syncOfflineDataFromSD() {
+  if (!sdAvailable || wifiState != WIFI_STATE_CONNECTED || WiFi.status() != WL_CONNECTED) return;
+  if (serverUrl.length() < 7) return;
+
+  File dataFile = SD.open("/qguard_log.csv", FILE_READ);
+  if (!dataFile) return;
+
+  uint32_t fileSize = dataFile.size();
+  if (fileSize < 50) {
+    dataFile.close();
+    return;
+  }
+
+  // Jika offset belum diinisialisasi atau file lebih kecil dari offset tersimpan (misal file baru)
+  if (sdSyncOffset == 0 || sdSyncOffset > fileSize) {
+    dataFile.seek(0);
+    // Lewati baris header CSV pertama
+    String header = dataFile.readStringUntil('\n');
+    sdSyncOffset = dataFile.position();
+    preferences.begin("qguard", false);
+    preferences.putULong("sd_sync_pos", sdSyncOffset);
+    preferences.end();
+  }
+
+  // Jika seluruh data offline sudah ter-upload (offset sudah di ujung file)
+  if (sdSyncOffset >= fileSize) {
+    dataFile.close();
+    return;
+  }
+
+  dataFile.seek(sdSyncOffset);
+
+  const int MAX_BATCH = 5;
+  String jsonRows = "";
+  jsonRows.reserve(1500);
+  int recordsRead = 0;
+  uint32_t nextOffset = sdSyncOffset;
+
+  while (dataFile.available() && recordsRead < MAX_BATCH) {
+    uint32_t lineStartPos = dataFile.position();
+    String line = dataFile.readStringUntil('\n');
+    line.trim();
+    if (line.length() < 15) continue; // Abaikan baris kosong atau cacat
+
+    // Parse CSV: Timestamp,T1,T2,T3,MKT,AmbT,AmbH,Door,GForce,Lat,Lon,RiskScore,RiskLevel
+    int idx = 0;
+    int nextIdx = 0;
+    String cols[13];
+    bool valid = true;
+    for (int c = 0; c < 13; c++) {
+      nextIdx = line.indexOf(',', idx);
+      if (nextIdx < 0 && c < 12) {
+        valid = false;
+        break;
+      }
+      if (nextIdx < 0) cols[c] = line.substring(idx);
+      else cols[c] = line.substring(idx, nextIdx);
+      cols[c].trim();
+      idx = nextIdx + 1;
+    }
+
+    if (!valid || cols[0].length() < 10) continue;
+
+    // Pastikan format ISO 8601 (YYYY-MM-DDTHH:MM:SSZ)
+    String isoTimestamp = cols[0];
+    isoTimestamp.replace(" ", "T");
+    if (!isoTimestamp.endsWith("Z")) isoTimestamp += "Z";
+
+    String t1Val = (cols[1] == "N/A") ? "null" : cols[1];
+    String t2Val = (cols[2] == "N/A") ? "null" : cols[2];
+    String t3Val = (cols[3] == "N/A") ? "null" : cols[3];
+    String ambTVal = (cols[5] == "N/A") ? "null" : cols[5];
+    String ambHVal = (cols[6] == "N/A") ? "null" : cols[6];
+    String gForceVal = (cols[8] == "N/A") ? "null" : cols[8];
+    String latVal = (cols[9] == "N/A") ? "null" : cols[9];
+    String lonVal = (cols[10] == "N/A") ? "null" : cols[10];
+
+    if (recordsRead > 0) jsonRows += ",";
+    jsonRows += "{\"device_record_id\":";
+    jsonRows += String(lineStartPos);
+    jsonRows += ",\"timestamp\":\"";
+    jsonRows += isoTimestamp;
+    jsonRows += "\",\"temperature_probe_1\":";
+    jsonRows += t1Val;
+    jsonRows += ",\"temperature_probe_2\":";
+    jsonRows += t2Val;
+    jsonRows += ",\"temperature_probe_3\":";
+    jsonRows += t3Val;
+    jsonRows += ",\"ambient_temperature\":";
+    jsonRows += ambTVal;
+    jsonRows += ",\"relative_humidity\":";
+    jsonRows += ambHVal;
+    jsonRows += ",\"acceleration_x\":0.00,\"acceleration_y\":0.00,\"acceleration_z\":";
+    jsonRows += gForceVal;
+    jsonRows += ",\"door_status\":\"";
+    jsonRows += cols[7];
+    jsonRows += "\",\"latitude\":";
+    jsonRows += latVal;
+    jsonRows += ",\"longitude\":";
+    jsonRows += lonVal;
+    jsonRows += ",\"gps_fix_status\":\"";
+    jsonRows += (latVal != "null" ? "FIX_3D" : "NO_FIX");
+    jsonRows += "\",\"sensor_health\":\"OK\",\"risk_level\":\"";
+    jsonRows += cols[12];
+    jsonRows += "\",\"risk_reasons\":\"Skor:";
+    jsonRows += cols[11];
+    jsonRows += "\"}";
+
+    recordsRead++;
+    nextOffset = dataFile.position();
+  }
+  dataFile.close();
+
+  if (recordsRead == 0) {
+    sdSyncOffset = fileSize;
+    preferences.begin("qguard", false);
+    preferences.putULong("sd_sync_pos", sdSyncOffset);
+    preferences.end();
+    return;
+  }
+
+  // Susun payload JSON batch
+  String payload = "{\"device_id\":\"" + deviceId + "\",\"batch_size\":" + String(recordsRead) + ",\"readings\":[" + jsonRows + "]}";
+
+  HTTPClient http;
+  http.begin(serverUrl);
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(3500);
+
+  int httpCode = http.POST(payload);
+  if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED) {
+    sdSyncOffset = nextOffset;
+    preferences.begin("qguard", false);
+    preferences.putULong("sd_sync_pos", sdSyncOffset);
+    preferences.end();
+    Serial.printf("[OFFLINE-SYNC] Berhasil upload %d baris rekaman MicroSD ke Dashboard! (%u / %u bytes)\n",
+                  recordsRead, sdSyncOffset, fileSize);
+  } else {
+    Serial.printf("[OFFLINE-SYNC] Gagal upload batch offline: HTTP %d (%s)\n",
+                  httpCode, http.errorToString(httpCode).c_str());
   }
   http.end();
 }
@@ -1989,12 +2139,12 @@ void drawSdInfoScreen() {
   tft.setCursor(12, 6);
   tft.print(appLang == LANG_EN ? "MICROSD STATUS" : "STATUS MEMORI MICROSD");
 
-  tft.fillRoundRect(10, 40, 300, 160, 6, COLOR_CARD);
-  tft.drawRoundRect(10, 40, 300, 160, 6, COLOR_CARD_BORDER);
+  tft.fillRoundRect(10, 35, 300, 174, 6, COLOR_CARD);
+  tft.drawRoundRect(10, 35, 300, 174, 6, COLOR_CARD_BORDER);
 
   tft.setTextColor(COLOR_WHITE);
   tft.setTextSize(1);
-  tft.setCursor(25, 60);
+  tft.setCursor(20, 48);
   tft.print(appLang == LANG_EN ? "SD Card Status   : " : "Status Kartu SD  : ");
   if (sdAvailable) {
     tft.setTextColor(COLOR_GREEN_SAFE);
@@ -2005,22 +2155,30 @@ void drawSdInfoScreen() {
   }
 
   tft.setTextColor(COLOR_WHITE);
-  tft.setCursor(25, 85);
+  tft.setCursor(20, 70);
   tft.print(appLang == LANG_EN ? "Log File Format  : /qguard_log.csv" : "Format File Log  : /qguard_log.csv");
 
-  tft.setCursor(25, 110);
+  tft.setCursor(20, 92);
   tft.print(appLang == LANG_EN ? "Total Log Lines  : " : "Jumlah Baris Log : ");
   tft.setTextColor(COLOR_GOLD);
   tft.print(telemetry.logCount);
   tft.print(appLang == LANG_EN ? " lines" : " baris");
 
   tft.setTextColor(COLOR_WHITE);
-  tft.setCursor(25, 135);
+  tft.setCursor(20, 114);
   tft.print(appLang == LANG_EN ? "Save Interval    : 5 Seconds" : "Periode Simpan   : 5 Detik");
 
-  tft.setCursor(25, 160);
+  tft.setCursor(20, 136);
   tft.setTextColor(COLOR_CYAN);
   tft.print(appLang == LANG_EN ? "Data Logging     : ACTIVE (AUTO)" : "Pencatatan Data  : AKTIF (OTOMATIS)");
+
+  tft.setCursor(20, 158);
+  tft.setTextColor(COLOR_GREEN_SAFE);
+  tft.print(appLang == LANG_EN ? "Cloud Auto-Sync  : AUTO (BATCH 5)" : "Sinkronisasi Cloud: OTOMATIS (BATCH 5)");
+
+  tft.setCursor(20, 180);
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.printf(appLang == LANG_EN ? "Sync Progress    : %u bytes synced" : "Progres Sync     : %u bytes terkirim", sdSyncOffset);
 
   tft.fillRect(0, 215, 320, 25, COLOR_NAV_BAR);
   tft.setTextColor(COLOR_GRAY_TEXT);
@@ -3265,6 +3423,12 @@ void loop() {
   if (wifiState == WIFI_STATE_CONNECTED && (currentMillis - lastWifiSendTime >= 1000)) {
     lastWifiSendTime = currentMillis;
     sendTelemetryToBackend();
+  }
+
+  // 6B. Sinkronisasi Otomatis Data Rekaman Offline dari MicroSD ke Dashboard (Setiap 2 Detik saat Online)
+  if (sdAvailable && wifiState == WIFI_STATE_CONNECTED && (currentMillis - lastSdSyncTime >= 2000) && (currentMillis - lastWifiSendTime >= 400)) {
+    lastSdSyncTime = currentMillis;
+    syncOfflineDataFromSD();
   }
 
   // 7. Perbarui tampilan data sensor setiap 1 detik (ZERO FLICKER: Hanya ubah angka tanpa fillScreen)
