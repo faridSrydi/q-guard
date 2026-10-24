@@ -3156,7 +3156,7 @@ void loop() {
     server.handleClient();
   }
 
-  // 3. Pantau transisi koneksi Wi-Fi Station
+  // 3. Pantau transisi koneksi Wi-Fi Station & Auto-Reconnect Cerdas
   if (wifiState == WIFI_STATE_CONNECTING) {
     if (WiFi.status() == WL_CONNECTED) {
       wifiState = WIFI_STATE_CONNECTED;
@@ -3174,9 +3174,27 @@ void loop() {
         }
         telemetry.timestamp = ntpNow;
       }
-    } else if (millis() - wifiConnectStartTime > 12000) {
-      Serial.println(F("[WIFI] Timeout gagal konek. Mengaktifkan kembali Portal Setup..."));
-      startWiFiPortal();
+    } else if (millis() - wifiConnectStartTime > 15000) {
+      if (wifiSsid.length() == 0) {
+        Serial.println(F("[WIFI] SSID belum ada. Mengaktifkan Web Portal Setup..."));
+        startWiFiPortal();
+      } else {
+        static unsigned long lastWifiRetryLog = 0;
+        if (currentMillis - lastWifiRetryLog >= 15000) {
+          lastWifiRetryLog = currentMillis;
+          Serial.printf("[WIFI] Sedang mencari sinyal '%s'... (Mencoba auto-reconnect di latar belakang)\n", wifiSsid.c_str());
+        }
+        wifiConnectStartTime = currentMillis;
+        WiFi.reconnect();
+      }
+    }
+  } else if (wifiState == WIFI_STATE_CONNECTED) {
+    // Deteksi jika koneksi Wi-Fi terputus di tengah jalan (drop connection)
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println(F("[WIFI] Sinyal Wi-Fi terputus! Beralih ke auto-reconnect di latar belakang..."));
+      wifiState = WIFI_STATE_CONNECTING;
+      wifiConnectStartTime = currentMillis;
+      WiFi.reconnect();
     }
   }
 
