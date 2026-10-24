@@ -1061,7 +1061,7 @@ async function renderMonitoringView() {
                     </div>
                     <div class="metric-footer">
                         <span class="metric-badge safe">BME280</span>
-                        <span>${r.ambient_temperature !== null ? 'Udara Luar Boks' : 'Udara Luar (Simulasi 28.5°C)'}</span>
+                        <span>Udara Luar Boks</span>
                     </div>
                 </div>
             </div>

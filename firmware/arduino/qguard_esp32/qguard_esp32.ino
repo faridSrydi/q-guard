@@ -313,11 +313,11 @@ void showBuzzerToast(bool isMuted) {
   tft.setTextSize(1);
   tft.setTextColor(accentColor);
   tft.setCursor(toastX + 14, toastY + 8);
-  tft.print(isMuted ? "ALARM PERINGATAN: MATI [OFF]" : "ALARM PERINGATAN: AKTIF [ON]");
+  tft.print(isMuted ? "ALARM SUHU: SENYAP [MUTE]" : "ALARM SUHU: AKTIF [ON]");
 
   tft.setTextColor(COLOR_WHITE);
   tft.setCursor(toastX + 14, toastY + 22);
-  tft.print(isMuted ? "Klik merah 3x lagi utk nyalakan" : "Klik merah 3x lagi utk matikan");
+  tft.print(isMuted ? "Tekan tombol merah 3x utk aktifkan" : "Tekan tombol merah 3x utk senyap");
 }
 
 // ============================================================================
@@ -554,16 +554,16 @@ void drawSplashScreen() {
   // Tagline Riset
   tft.setTextColor(COLOR_WHITE);
   tft.setTextSize(1);
-  tft.setCursor(44, 105);
-  tft.print("SMART COLD-CHAIN RISK MONITOR");
+  tft.setCursor(56, 105);
+  tft.print("COLD-CHAIN MONITORING SYSTEM");
   
   tft.setTextColor(COLOR_GOLD);
-  tft.setCursor(40, 120);
-  tft.print("BIO-SECURITY & QUARANTINE PROTOCOL");
+  tft.setCursor(68, 120);
+  tft.print("BADAN KARANTINA INDONESIA");
 
   tft.setTextColor(COLOR_GRAY_TEXT);
-  tft.setCursor(85, 140);
-  tft.print("Version 1.0 | Edge-AI");
+  tft.setCursor(96, 140);
+  tft.print("Firmware v1.0 | ESP32");
 
   // Garis Pemisah
   tft.drawLine(40, 160, 280, 160, COLOR_CARD_BORDER);
@@ -576,13 +576,13 @@ void drawSplashScreen() {
   tft.drawRoundRect(barX, barY, barW, barH, 4, COLOR_WHITE);
 
   const char* bootSteps[] = {
-    "Init SPI Bus & LCD...",
-    "Mounting MicroSD Card...",
-    "Scanning I2C Sensors...",
-    "Detecting DS18B20 Probes...",
-    "Locking GPS NMEA Stream...",
-    "Calibrating Edge-AI Engine...",
-    "System Operational!"
+    "Inisialisasi Layar LCD...",
+    "Memeriksa Kartu MicroSD...",
+    "Memindai Sensor I2C...",
+    "Mendeteksi Probe Suhu DS18B20...",
+    "Sinkronisasi Modul GPS...",
+    "Memuat Parameter Karantina...",
+    "Sistem Siap Beroperasi"
   };
 
   for (int i = 0; i <= 100; i += 15) {
@@ -1274,27 +1274,8 @@ void drawMainMonitorScreen() {
 
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(1);
-  tft.setCursor(8, 9);
+  tft.setCursor(6, 9);
   tft.print("Q-GUARD");
-
-  // Status Profil Komoditas Aktif (Dinamis dari Web atau Preset)
-  tft.setCursor(140, 9);
-  tft.setTextColor(COLOR_CYAN);
-  if (activeCommodityName.length() > 0) {
-    String disp = activeCommodityName;
-    if (disp.length() > 10) disp = disp.substring(0, 9) + "..";
-    char profBuf[24];
-    snprintf(profBuf, sizeof(profBuf), "%s [%.0fC]", disp.c_str(), thresholdMax);
-    tft.print(profBuf);
-  } else if (currentProfile == PROFILE_FISH_FRESH) {
-    tft.print("IKAN SEGAR [0-4C]");
-  } else if (currentProfile == PROFILE_VACCINE_PHARMA) {
-    tft.setTextColor(COLOR_GOLD);
-    tft.print("VAKSIN [2-8C]");
-  } else {
-    tft.setTextColor(0x5DFF);
-    tft.print("BEKU [-20C]");
-  }
 
   // --- KOTAK 1: KARTU SUHU UTAMA (T1 INTI IKAN, T2 BUFFER ES, T3 PINTU) ---
   int cardY = 32;
@@ -1304,11 +1285,11 @@ void drawMainMonitorScreen() {
   tft.setTextColor(COLOR_GOLD);
   tft.setTextSize(1);
   tft.setCursor(14, cardY + 8);
-  tft.print("T1 (INTI IKAN)");
+  tft.print("T1 (PROBE INTI)");
 
   tft.setTextColor(COLOR_CYAN);
   tft.setCursor(118, cardY + 8);
-  tft.print("T2 (BUFFER ES)");
+  tft.print("T2 (BUFFER)");
 
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(232, cardY + 8);
@@ -1317,7 +1298,7 @@ void drawMainMonitorScreen() {
   tft.drawLine(14, cardY + 54, 300, cardY + 54, COLOR_CARD_BORDER);
   tft.setTextColor(COLOR_CYAN);
   tft.setCursor(18, cardY + 60);
-  tft.print("MKT (Arrhenius):");
+  tft.print("Suhu MKT:");
 
   tft.setCursor(180, cardY + 60);
   tft.setTextColor(COLOR_GRAY_TEXT);
@@ -1330,13 +1311,13 @@ void drawMainMonitorScreen() {
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setTextSize(1);
   tft.setCursor(16, envY + 8);
-  tft.print("LINGKUNGAN LUAR");
+  tft.print("SUHU RUANG LUAR");
 
   tft.fillRoundRect(164, envY, 148, 52, 6, COLOR_CARD);
   tft.drawRoundRect(164, envY, 148, 52, 6, COLOR_CARD_BORDER);
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(172, envY + 8);
-  tft.print("GUNCANGAN (MPU)");
+  tft.print("GUNCANGAN");
 
   // --- KOTAK 3: AI RISK BADGE ---
   int aiY = 172;
@@ -1345,7 +1326,7 @@ void drawMainMonitorScreen() {
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setTextSize(1);
   tft.setCursor(16, aiY + 8);
-  tft.print("AI RISK ENGINE (SCORE 0-100)");
+  tft.print("STATUS RISIKO KARANTINA");
 
   // --- TOMBOL SENTUH INTERAKTIF: [ MENU ] ---
   int btnX = 226;
@@ -1359,8 +1340,8 @@ void drawMainMonitorScreen() {
   tft.setCursor(btnX + 16, btnY + 16);
   tft.print("MENU");
   tft.setTextSize(1);
-  tft.setCursor(btnX + 10, btnY + 38);
-  tft.print("[Touch/OK]");
+  tft.setCursor(btnX + 18, btnY + 38);
+  tft.print("[PILIH]");
 
   // Gambar angka dan nilai awal langsung tanpa nunggu 1 detik
   updateMainMonitorData();
@@ -1368,45 +1349,45 @@ void drawMainMonitorScreen() {
 
 // Update HANYA angka dan nilai dinamis (ZERO FLICKER, tidak pernah panggil fillScreen)
 void updateMainMonitorData() {
-  // 1. Update Jam RTC di Baris Atas
-  tft.fillRect(70, 6, 68, 16, COLOR_NAV_BAR);
+  // 1. Update Jam RTC di Baris Atas (X: 52..104)
+  tft.fillRect(52, 6, 54, 16, COLOR_NAV_BAR);
   tft.setTextColor(COLOR_WHITE);
   tft.setTextSize(1);
-  tft.setCursor(72, 9);
+  tft.setCursor(54, 9);
   char clockStr[12];
   sprintf(clockStr, "%02d:%02d:%02d", 
           telemetry.timestamp.hour(), telemetry.timestamp.minute(), telemetry.timestamp.second());
   tft.print(clockStr);
 
-  // 1B. Update Label Profil Komoditas Aktif (Sinkron Real-time jika diubah dari Web)
-  tft.fillRect(140, 6, 102, 16, COLOR_NAV_BAR);
-  tft.setCursor(142, 9);
+  // 1B. Update Label Profil Komoditas Aktif (X: 110..198)
+  tft.fillRect(110, 6, 90, 16, COLOR_NAV_BAR);
+  tft.setCursor(112, 9);
   tft.setTextColor(COLOR_CYAN);
-  if (activeCommodityName.length() > 0) {
-    String disp = activeCommodityName;
-    if (disp.length() > 9) disp = disp.substring(0, 8) + "..";
-    char profBuf[24];
-    snprintf(profBuf, sizeof(profBuf), "%s [%.0fC]", disp.c_str(), thresholdMax);
-    tft.print(profBuf);
-  } else if (currentProfile == PROFILE_FISH_FRESH) {
-    tft.print("IKAN SEGAR");
-  } else if (currentProfile == PROFILE_VACCINE_PHARMA) {
-    tft.setTextColor(COLOR_GOLD);
-    tft.print("VAKSIN");
+  String disp = activeCommodityName;
+  if (disp.length() == 0) {
+    disp = (currentProfile == PROFILE_FISH_FRESH) ? "IKAN [0-4C]" :
+           (currentProfile == PROFILE_VACCINE_PHARMA) ? "VAKSIN [2-8C]" : "BEKU [-18C]";
   } else {
-    tft.setTextColor(0x5DFF);
-    tft.print("BEKU -18C");
+    // Tambahkan batas suhu hanya jika belum ada tanda kurung di nama komoditas
+    if (disp.indexOf('[') < 0 && disp.indexOf('(') < 0) {
+      char profBuf[20];
+      snprintf(profBuf, sizeof(profBuf), "%s [%.0fC]", disp.substring(0, 7).c_str(), thresholdMax);
+      disp = String(profBuf);
+    }
   }
+  if (disp.length() > 14) disp = disp.substring(0, 13) + ".";
+  tft.print(disp);
 
-  // 1C. Indikator Status Buzzer Mute Total di Header
+  // 1C. Indikator Status Buzzer Mute Total di Header (X: 202..244, selalu clear background)
+  tft.fillRect(202, 6, 42, 16, COLOR_NAV_BAR);
   if (buzzerMuteTotal) {
-    tft.setCursor(206, 9);
+    tft.setCursor(204, 9);
     tft.setTextColor(COLOR_RED_ALERT);
     tft.print("[MUTE]");
   }
 
-  // 2. Status WiFi, SD & GPS
-  tft.fillRect(245, 6, 73, 16, COLOR_NAV_BAR);
+  // 2. Status WiFi, SD & GPS (X: 246..318)
+  tft.fillRect(246, 6, 72, 16, COLOR_NAV_BAR);
   tft.setTextSize(1);
   tft.setCursor(248, 9);
   if (wifiState == WIFI_STATE_CONNECTED) {
@@ -1420,7 +1401,7 @@ void updateMainMonitorData() {
     tft.print("WF-");
   }
 
-  tft.setCursor(275, 9);
+  tft.setCursor(272, 9);
   tft.setTextColor(sdAvailable ? COLOR_GREEN_SAFE : COLOR_GRAY_TEXT);
   tft.print(sdAvailable ? "SD" : "SD-");
 
@@ -1521,7 +1502,7 @@ void updateMainMonitorData() {
   tft.setTextSize(2);
   if (telemetry.gForce > 2.0) {
     tft.setTextColor(COLOR_RED_ALERT);
-    tft.print("SHOCK!");
+    tft.print("BENTURAN");
   } else {
     tft.setTextColor(COLOR_GREEN_SAFE);
     tft.print(telemetry.gForce, 2);
@@ -1548,11 +1529,11 @@ void updateMainMonitorData() {
   tft.setTextSize(1);
   tft.setCursor(16, aiY + 44);
   if (strcmp(telemetry.riskLevel, "CRITICAL") == 0) {
-    tft.print("TRIAGE: TAHAN / UJI LAB");
+    tft.print("JALUR MERAH: TAHAN / LAB");
   } else if (strcmp(telemetry.riskLevel, "WARNING") == 0) {
-    tft.print("TRIAGE: PERIKSA FISIK");
+    tft.print("JALUR KUNING: PERIKSA FISIK");
   } else {
-    tft.print("TRIAGE: LOLOS JALUR CEPAT");
+    tft.print("JALUR HIJAU: LOLOS (AMAN)");
   }
 }
 
@@ -1568,15 +1549,15 @@ void drawMenuScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(2);
   tft.setCursor(12, 6);
-  tft.print("PILIHAN MENU Q-GUARD");
+  tft.print("MENU UTAMA");
 
   const char* menuItems[] = {
-    "1. Live Telemetry Monitor",
-    "2. Ganti Profil Komoditas",
-    "3. Grafik Mini Tren Suhu",
-    "4. Ringkasan Karantina (Dossier)",
-    "5. Status MicroSD & Log",
-    "6. Setup Wi-Fi & Web Portal"
+    "1. Monitor Suhu Real-Time",
+    "2. Profil Komoditas",
+    "3. Grafik Riwayat Suhu",
+    "4. Laporan Karantina (Dossier)",
+    "5. Status Memori MicroSD",
+    "6. Pengaturan Wi-Fi & Cloud"
   };
 
   int startY = 34;
@@ -1602,7 +1583,7 @@ void drawMenuScreen() {
 
     if (isSelected) {
       tft.setCursor(244, itemY + 8);
-      tft.print("[BUKA >]");
+      tft.print("[PILIH]");
     }
   }
 
@@ -1611,7 +1592,7 @@ void drawMenuScreen() {
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setTextSize(1);
   tft.setCursor(12, 224);
-  tft.print("Sentuh/SELECT: Pilih | Sentuh 2x/CONFIRM: Buka");
+  tft.print("SELECT: Geser  |  CONFIRM / Sentuh: Buka");
 }
 
 // ============================================================================
@@ -1627,9 +1608,9 @@ void drawProfileSelectScreen() {
   tft.print("PROFIL KOMODITAS");
 
   const char* profiles[] = {
-    "1. IKAN SEGAR (0.0C s/d 4.0C)",
-    "2. VAKSIN / OBAT (2.0C s/d 8.0C)",
-    "3. IKAN / DAGING BEKU (-20C)"
+    "1. Ikan Segar (0.0 s/d 4.0 C)",
+    "2. Vaksin / Farmasi (2.0 s/d 8.0 C)",
+    "3. Komoditas Beku (-25 s/d -18 C)"
   };
 
   int startY = 46;
@@ -1656,7 +1637,7 @@ void drawProfileSelectScreen() {
   tft.fillRect(0, 218, 320, 22, COLOR_NAV_BAR);
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(12, 224);
-  tft.print("Sentuh layar atau tekan [CONFIRM] untuk simpan");
+  tft.print("Tekan [CONFIRM] atau sentuh untuk menyimpan");
 }
 
 // ============================================================================
@@ -1669,7 +1650,7 @@ void drawGraphScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(1);
   tft.setCursor(10, 9);
-  tft.print("TREN SUHU INTI (T1) - 30 TITIK TERAKHIR");
+  tft.print("GRAFIK RIWAYAT SUHU (T1)");
 
   int originX = 35;
   int originY = 195;
@@ -1736,7 +1717,7 @@ void drawGraphScreen() {
   tft.fillRect(0, 215, 320, 25, COLOR_NAV_BAR);
   tft.setTextColor(COLOR_CYAN);
   tft.setCursor(20, 222);
-  tft.print("< Tekan [BACK] atau Sentuh untuk kembali");
+  tft.print("< Tekan [BACK] untuk kembali");
 }
 
 // ============================================================================
@@ -1751,7 +1732,7 @@ void drawDossierScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(1);
   tft.setCursor(8, 9);
-  tft.print("BARANTIN - AUDIT DOSSIER");
+  tft.print("LAPORAN AUDIT PENGIRIMAN");
 
   // Profil Komoditas aktif di kanan atas
   tft.setCursor(185, 9);
@@ -1777,22 +1758,22 @@ void drawDossierScreen() {
   // Tentukan Keputusan / Disposisi Jalur Karantina
   uint16_t verdictColor = COLOR_GREEN_SAFE;
   const char* verdictLabel = "JALUR HIJAU (LOLOS)";
-  const char* verdictDesc = "Integritas Cold-Chain Terjaga Standar Barantin";
+  const char* verdictDesc = "Suhu stabil memenuhi standar karantina";
 
   if (tripMetrics.hasData) {
     if (tripMetrics.maxTemp > thresholdMax + 4.0f || compRate < 80.0f) {
       verdictColor = COLOR_RED_ALERT;
       verdictLabel = "JALUR MERAH (TAHAN / LAB)";
-      verdictDesc = "Deviasi Kritis! Tahan Komoditas & Uji Mikrobiologi";
+      verdictDesc = "Terjadi deviasi kritis, tahan dan uji lab";
     } else if (compRate < 95.0f || tripMetrics.excursionCount > 0 || tripMetrics.doorBreachCount > 3 || tripMetrics.peakShockG > 2.0f) {
       verdictColor = COLOR_GOLD;
       verdictLabel = "JALUR KUNING (PERIKSA FISIK)";
-      verdictDesc = "Anomali Terdeteksi. Lakukan Inspeksi Organoleptik";
+      verdictDesc = "Anomali terdeteksi, periksa kondisi fisik";
     }
   } else {
     verdictColor = COLOR_CYAN;
-    verdictLabel = "MEMANTAU PENGAWASAN TRIP...";
-    verdictDesc = "Menunggu akumulasi data sensor fisik masuk";
+    verdictLabel = "MENUNGGU DATA PENGIRIMAN...";
+    verdictDesc = "Menghimpun riwayat sensor fisik...";
   }
 
   // 3. Card Keputusan Disposisi Karantina (Triage Banner)
@@ -1803,7 +1784,7 @@ void drawDossierScreen() {
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setTextSize(1);
   tft.setCursor(14, cardY + 6);
-  tft.print("DISPOSISI RESMI KARANTINA:");
+  tft.print("STATUS DISPOSISI:");
 
   tft.setTextSize(2);
   tft.setTextColor(verdictColor);
@@ -1827,7 +1808,7 @@ void drawDossierScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(1);
   tft.setCursor(14, colY + 6);
-  tft.print("STATISTIK SUHU INTI (T1)");
+  tft.print("SUHU PROBE INTI (T1)");
   tft.drawLine(14, colY + 16, 148, colY + 16, COLOR_CARD_BORDER);
 
   tft.setTextColor(COLOR_GRAY_TEXT);
@@ -1880,7 +1861,7 @@ void drawDossierScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(1);
   tft.setCursor(170, colY + 6);
-  tft.print("INSIDEN & FISIK");
+  tft.print("CATATAN ANOMALI");
   tft.drawLine(170, colY + 16, 304, colY + 16, COLOR_CARD_BORDER);
 
   tft.setTextColor(COLOR_GRAY_TEXT);
@@ -1924,8 +1905,8 @@ void drawDossierScreen() {
   tft.drawRoundRect(8, 188, 148, 26, 6, COLOR_RED_ALERT);
   tft.setTextColor(COLOR_WHITE);
   tft.setTextSize(1);
-  tft.setCursor(20, 196);
-  tft.print("[!] RESET TRIP BARU");
+  tft.setCursor(14, 196);
+  tft.print("[ RESET DATA TRIP ]");
 
   // Tombol 2: [ KEMBALI KE MENU ] (Kanan)
   tft.fillRoundRect(164, 188, 148, 26, 6, COLOR_CARD);
@@ -1939,7 +1920,7 @@ void drawDossierScreen() {
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setTextSize(1);
   tft.setCursor(10, 224);
-  tft.print("Sentuh / Tekan [CONFIRM] utk Reset, [BACK] utk Menu");
+  tft.print("[CONFIRM]: Reset Data  |  [BACK]: Menu");
 }
 
 // ============================================================================
@@ -1952,7 +1933,7 @@ void drawSdInfoScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(2);
   tft.setCursor(12, 6);
-  tft.print("STATUS MICROSD CARD");
+  tft.print("STATUS MEMORI MICROSD");
 
   tft.fillRoundRect(10, 40, 300, 160, 6, COLOR_CARD);
   tft.drawRoundRect(10, 40, 300, 160, 6, COLOR_CARD_BORDER);
@@ -1960,13 +1941,13 @@ void drawSdInfoScreen() {
   tft.setTextColor(COLOR_WHITE);
   tft.setTextSize(1);
   tft.setCursor(25, 60);
-  tft.print("Koneksi Slot SD  : ");
+  tft.print("Status Kartu SD  : ");
   if (sdAvailable) {
     tft.setTextColor(COLOR_GREEN_SAFE);
     tft.print("TERHUBUNG (FAT32)");
   } else {
     tft.setTextColor(COLOR_RED_ALERT);
-    tft.print("TIDAK DITEMUKAN");
+    tft.print("TIDAK TERPASANG");
   }
 
   tft.setTextColor(COLOR_WHITE);
@@ -1981,16 +1962,16 @@ void drawSdInfoScreen() {
 
   tft.setTextColor(COLOR_WHITE);
   tft.setCursor(25, 135);
-  tft.print("Interval Simpan  : Setiap 5 Detik");
+  tft.print("Periode Simpan   : 5 Detik");
 
   tft.setCursor(25, 160);
   tft.setTextColor(COLOR_CYAN);
-  tft.print("Status Logging   : AKTIF AUTO-SAVE");
+  tft.print("Pencatatan Data  : AKTIF (OTOMATIS)");
 
   tft.fillRect(0, 215, 320, 25, COLOR_NAV_BAR);
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(20, 222);
-  tft.print("< Tekan [BACK] untuk kembali ke Menu");
+  tft.print("< Tekan [BACK] untuk kembali");
 }
 
 // ============================================================================
@@ -2044,7 +2025,7 @@ void drawWifiConfigScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(2);
   tft.setCursor(12, 6);
-  tft.print("WI-FI & CLOUD SETUP");
+  tft.print("PENGATURAN WI-FI");
 
   tft.fillRoundRect(8, 34, 304, 175, 6, COLOR_CARD);
   tft.drawRoundRect(8, 34, 304, 175, 6, COLOR_CARD_BORDER);
@@ -2068,7 +2049,7 @@ void drawWifiConfigScreen() {
   } else if (wifiState == WIFI_STATE_PORTAL) {
     tft.setTextColor(COLOR_CYAN);
     tft.setTextSize(2);
-    tft.print("AUTO-POPUP");
+    tft.print("HOTSPOT AKTIF");
     tft.setTextSize(1);
     tft.setTextColor(COLOR_WHITE);
     tft.setCursor(16, 76);
@@ -2080,7 +2061,7 @@ void drawWifiConfigScreen() {
   } else {
     tft.setTextColor(COLOR_GOLD);
     tft.setTextSize(2);
-    tft.print("CONNECTING..");
+    tft.print("MENGHUBUNGKAN..");
     tft.setTextSize(1);
     tft.setTextColor(COLOR_WHITE);
     tft.setCursor(16, 76);
@@ -2091,20 +2072,20 @@ void drawWifiConfigScreen() {
 
   tft.setTextColor(COLOR_CYAN);
   tft.setCursor(16, 126);
-  tft.print("SETUP TANPA KETIK IP:");
+  tft.print("PANDUAN KONFIGURASI:");
 
   tft.setTextColor(COLOR_WHITE);
   tft.setCursor(16, 140);
-  tft.print("1. Konek 'QGUARD-SETUP'");
+  tft.print("1. Hubungkan ke Wi-Fi:");
   tft.setCursor(16, 152);
   tft.setTextColor(COLOR_GREEN_SAFE);
-  tft.print("   -> Pop-up Auto Muncul!");
+  tft.print("   SSID: QGUARD-SETUP");
   tft.setTextColor(COLOR_WHITE);
   tft.setCursor(16, 166);
-  tft.print("2. Atau scan QR di kanan");
+  tft.print("2. Atau scan QR di samping");
   tft.setCursor(16, 180);
   tft.setTextColor(COLOR_GRAY_TEXT);
-  tft.print("Domain: http://qguard.local");
+  tft.print("Portal: http://192.168.4.1");
   tft.setCursor(16, 192);
   tft.print("Backend: "); tft.print(serverUrl.substring(0, 20));
 
@@ -2117,12 +2098,12 @@ void drawWifiConfigScreen() {
   tft.print("SCAN QR CODE");
   tft.setCursor(205, 157);
   tft.setTextColor(COLOR_CYAN);
-  tft.print("Buka Setup HP");
+  tft.print("Setup via HP");
 
   tft.fillRect(0, 215, 320, 25, COLOR_NAV_BAR);
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(12, 222);
-  tft.print("[CONFIRM/Touch]: Buka Portal   [BACK]: Menu");
+  tft.print("[CONFIRM]: Buka Portal   [BACK]: Menu");
 }
 
 // ============================================================================
