@@ -133,11 +133,17 @@ enum ScreenState {
   SCREEN_GRAPH,
   SCREEN_DOSSIER,         // Ringkasan Karantina & Disposisi Jalur Hijau/Kuning/Merah
   SCREEN_SD_INFO,
-  SCREEN_WIFI_CONFIG
+  SCREEN_WIFI_CONFIG,
+  SCREEN_SETTINGS
 };
 
 ScreenState currentScreen = SCREEN_SPLASH;
-int menuCursor = 0; // Pilihan menu aktif (0..5)
+int menuCursor = 0; // Pilihan menu aktif (0..6)
+
+// Konfigurasi Auto-Sleep Layar TFT
+int tftSleepMinutes = 2; // Pilihan waktu tidur layar: 1, 2, 3, 5, 10, atau 0 (OFF / Always ON)
+unsigned long lastUserInteractionTime = 0; // Waktu terakhir ada interaksi pengguna (tombol/sentuh)
+bool tftIsAsleep = false; // Status apakah layar sedang dalam mode tidur hemat energi
 
 // Data Telemetri Terkini
 struct TelemetryData {
@@ -259,6 +265,9 @@ void drawGraphScreen();
 void drawDossierScreen();
 void drawSdInfoScreen();
 void drawWifiConfigScreen();
+void drawSettingsScreen();
+void putTFTToSleep();
+void wakeUpTFT();
 void startWiFiPortal();
 void connectToStation(const String& ssid, const String& pass);
 void sendTelemetryToBackend();
@@ -901,6 +910,7 @@ void loadWifiPreferences() {
   activeCommodityName = preferences.getString("c_name", "BEKU [-18C]");
   float cMin = preferences.getFloat("c_min", -999.0f);
   float cMax = preferences.getFloat("c_max", -999.0f);
+  tftSleepMinutes = preferences.getInt("sleep_min", 2);
   preferences.end();
 
   if (cMin > -100.0f && cMax > -100.0f) {
@@ -917,6 +927,7 @@ void loadWifiPreferences() {
   Serial.printf("  SSID    : %s\n", wifiSsid.length() > 0 ? wifiSsid.c_str() : "(Belum diatur)");
   Serial.printf("  Server  : %s\n", serverUrl.c_str());
   Serial.printf("  Device  : %s\n", deviceId.c_str());
+  Serial.printf("  AutoSleep: %d Menit%s\n", tftSleepMinutes, tftSleepMinutes == 0 ? " (Always ON)" : "");
   Serial.printf("  Profil  : %s (%.1fC s/d %.1fC)\n", 
                 currentProfile == PROFILE_FISH_FRESH ? "IKAN SEGAR" : (currentProfile == PROFILE_VACCINE_PHARMA ? "VAKSIN" : "BEKU -20C"),
                 thresholdMin, thresholdMax);
@@ -1557,32 +1568,33 @@ void drawMenuScreen() {
     "3. Grafik Riwayat Suhu",
     "4. Laporan Karantina (Dossier)",
     "5. Status Memori MicroSD",
-    "6. Pengaturan Wi-Fi & Cloud"
+    "6. Pengaturan Wi-Fi & Cloud",
+    "7. Pengaturan Sistem (Setting)"
   };
 
-  int startY = 34;
-  int itemH = 26;
+  int startY = 29;
+  int itemH = 23;
   int gap = 4;
 
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < 7; i++) {
     int itemY = startY + (i * (itemH + gap));
     bool isSelected = (i == menuCursor);
 
     if (isSelected) {
-      tft.fillRoundRect(10, itemY, 300, itemH, 5, COLOR_CYAN);
+      tft.fillRoundRect(10, itemY, 300, itemH, 4, COLOR_CYAN);
       tft.setTextColor(COLOR_BG);
     } else {
-      tft.fillRoundRect(10, itemY, 300, itemH, 5, COLOR_CARD);
-      tft.drawRoundRect(10, itemY, 300, itemH, 5, COLOR_CARD_BORDER);
+      tft.fillRoundRect(10, itemY, 300, itemH, 4, COLOR_CARD);
+      tft.drawRoundRect(10, itemY, 300, itemH, 4, COLOR_CARD_BORDER);
       tft.setTextColor(COLOR_WHITE);
     }
 
     tft.setTextSize(1);
-    tft.setCursor(20, itemY + 8);
+    tft.setCursor(18, itemY + 7);
     tft.print(menuItems[i]);
 
     if (isSelected) {
-      tft.setCursor(244, itemY + 8);
+      tft.setCursor(248, itemY + 7);
       tft.print("[PILIH]");
     }
   }
@@ -2107,6 +2119,190 @@ void drawWifiConfigScreen() {
 }
 
 // ============================================================================
+// 17B. TAMPILAN PENGATURAN SISTEM (SETTINGS) & AUTO-SLEEP
+// ============================================================================
+#ifndef ILI9341_SLPIN
+#define ILI9341_SLPIN   0x10
+#endif
+#ifndef ILI9341_SLPOUT
+#define ILI9341_SLPOUT  0x11
+#endif
+#ifndef ILI9341_DISPOFF
+#define ILI9341_DISPOFF 0x28
+#endif
+#ifndef ILI9341_DISPON
+#define ILI9341_DISPON  0x29
+#endif
+
+void drawSettingsScreen() {
+  tft.fillScreen(COLOR_BG);
+
+  // Header Pengaturan Sistem
+  tft.fillRect(0, 0, 320, 28, COLOR_NAV_BAR);
+  tft.drawLine(0, 28, 320, 28, COLOR_CYAN);
+  tft.setTextColor(COLOR_CYAN);
+  tft.setTextSize(2);
+  tft.setCursor(12, 6);
+  tft.print("PENGATURAN SISTEM");
+
+  // Kartu 1: Auto-Sleep Layar TFT
+  tft.fillRoundRect(8, 33, 304, 86, 6, COLOR_CARD);
+  tft.drawRoundRect(8, 33, 304, 86, 6, COLOR_CARD_BORDER);
+
+  tft.setTextSize(1);
+  tft.setCursor(16, 39);
+  tft.setTextColor(COLOR_GOLD);
+  tft.print("AUTO-SLEEP LAYAR TFT (HEMAT ENERGI):");
+
+  tft.setCursor(16, 50);
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.print("Padam otomatis jika tidak ada sentuhan/tombol:");
+
+  // 6 Tombol Pilihan Menit (Pills)
+  const int sleepOpts[6] = {1, 2, 3, 5, 10, 0};
+  const char* sleepLabels[6] = {"1 Mnt", "2 Mnt", "3 Mnt", "5 Mnt", "10Mnt", "OFF"};
+
+  int btnW = 44;
+  int btnH = 22;
+  int startX = 14;
+  int gapX = 5;
+  int btnY = 63;
+
+  for (int i = 0; i < 6; i++) {
+    int bX = startX + (i * (btnW + gapX));
+    bool isActive = (tftSleepMinutes == sleepOpts[i]);
+
+    if (isActive) {
+      tft.fillRoundRect(bX, btnY, btnW, btnH, 4, COLOR_CYAN);
+      tft.setTextColor(COLOR_BG);
+    } else {
+      tft.fillRoundRect(bX, btnY, btnW, btnH, 4, COLOR_BG);
+      tft.drawRoundRect(bX, btnY, btnW, btnH, 4, COLOR_CARD_BORDER);
+      tft.setTextColor(COLOR_WHITE);
+    }
+
+    tft.setTextSize(1);
+    int textOffset = (i == 4) ? 7 : (i == 5 ? 13 : 7);
+    tft.setCursor(bX + textOffset, btnY + 7);
+    tft.print(sleepLabels[i]);
+  }
+
+  // Baris Status Konfigurasi Aktif
+  tft.setCursor(16, 91);
+  tft.setTextColor(COLOR_WHITE);
+  tft.print("Status: ");
+  if (tftSleepMinutes == 0) {
+    tft.setTextColor(COLOR_GOLD);
+    tft.print("Layar SELALU ON (Auto-Sleep Nonaktif)");
+  } else {
+    tft.setTextColor(COLOR_GREEN_SAFE);
+    tft.printf("Auto-Sleep %d Menit", tftSleepMinutes);
+    if (tftSleepMinutes == 2) {
+      tft.setTextColor(COLOR_CYAN);
+      tft.print(" [Rekomendasi]");
+    }
+  }
+
+  tft.setCursor(16, 104);
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.print("*Layar bangun instan jika disentuh, ditekan, atau alarm.");
+
+  // Kartu 2: Audio & Buzzer Alert
+  tft.fillRoundRect(8, 123, 304, 53, 6, COLOR_CARD);
+  tft.drawRoundRect(8, 123, 304, 53, 6, COLOR_CARD_BORDER);
+
+  tft.setCursor(16, 129);
+  tft.setTextColor(COLOR_GOLD);
+  tft.print("AUDIO & BUZZER ALARM:");
+
+  tft.setCursor(16, 143);
+  if (buzzerMuteTotal) {
+    tft.setTextColor(COLOR_RED_ALERT);
+    tft.print("Status: SENYAP TOTAL (Mute Permanen)");
+  } else {
+    tft.setTextColor(COLOR_GREEN_SAFE);
+    tft.print("Status: SUARA AKTIF (Alarm Normal)");
+  }
+
+  // Tombol Toggle Mute di Kanan
+  int muteBtnW = 76;
+  int muteBtnH = 20;
+  int muteBtnX = 228;
+  int muteBtnY = 131;
+  tft.fillRoundRect(muteBtnX, muteBtnY, muteBtnW, muteBtnH, 4, buzzerMuteTotal ? COLOR_RED_ALERT : COLOR_CYAN);
+  tft.setTextColor(COLOR_BG);
+  tft.setCursor(muteBtnX + (buzzerMuteTotal ? 16 : 24), muteBtnY + 6);
+  tft.print(buzzerMuteTotal ? "UNMUTE" : "MUTE");
+
+  tft.setCursor(16, 161);
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.print("Tip: Triple-click tombol merah fisik utk mute cepat.");
+
+  // Kartu 3: Info Firmware & Target Hardware
+  tft.fillRoundRect(8, 180, 304, 30, 6, COLOR_CARD);
+  tft.drawRoundRect(8, 180, 304, 30, 6, COLOR_CARD_BORDER);
+
+  tft.setCursor(16, 191);
+  tft.setTextColor(COLOR_WHITE);
+  tft.print("DEVICE: ");
+  tft.setTextColor(COLOR_CYAN);
+  tft.print(deviceId);
+  tft.setTextColor(COLOR_WHITE);
+  tft.print(" | FW: ");
+  tft.setTextColor(COLOR_GREEN_SAFE);
+  tft.print("v2.6.2-QIC");
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.print(" | ESP32 V1");
+
+  // Footer Navigation Bar
+  tft.fillRect(0, 215, 320, 25, COLOR_NAV_BAR);
+  tft.drawLine(0, 215, 320, 215, COLOR_CARD_BORDER);
+  tft.setTextColor(COLOR_GRAY_TEXT);
+  tft.setCursor(10, 222);
+  tft.print("[SELECT]: Geser   [CONFIRM]: Simpan   [BACK]: Menu");
+}
+
+void putTFTToSleep() {
+  if (tftIsAsleep) return;
+  tftIsAsleep = true;
+  Serial.printf("[AUTO-SLEEP] TFT LCD istirahat (Sleep In) setelah %d Menit idle.\n", tftSleepMinutes);
+  tft.fillScreen(COLOR_BG);
+  tft.sendCommand(ILI9341_DISPOFF);
+  delay(5);
+  tft.sendCommand(ILI9341_SLPIN);
+}
+
+void wakeUpTFT() {
+  if (!tftIsAsleep) return;
+  Serial.println(F("[AUTO-SLEEP] Membangunkan TFT LCD (Sleep Out / Display ON)..."));
+  tft.sendCommand(ILI9341_SLPOUT);
+  delay(120); // Waktu settling wajib ILI9341 sesuai datasheet
+  tft.sendCommand(ILI9341_DISPON);
+  tftIsAsleep = false;
+  lastUserInteractionTime = millis();
+  beepTouch();
+
+  // Gambar ulang tampilan layar yang sedang aktif
+  if (currentScreen == SCREEN_MONITOR) {
+    drawMainMonitorScreen();
+  } else if (currentScreen == SCREEN_MENU) {
+    drawMenuScreen();
+  } else if (currentScreen == SCREEN_PROFILE_SELECT) {
+    drawProfileSelectScreen();
+  } else if (currentScreen == SCREEN_GRAPH) {
+    drawGraphScreen();
+  } else if (currentScreen == SCREEN_DOSSIER) {
+    drawDossierScreen();
+  } else if (currentScreen == SCREEN_SD_INFO) {
+    drawSdInfoScreen();
+  } else if (currentScreen == SCREEN_WIFI_CONFIG) {
+    drawWifiConfigScreen();
+  } else if (currentScreen == SCREEN_SETTINGS) {
+    drawSettingsScreen();
+  }
+}
+
+// ============================================================================
 // 18. PENANGANAN INPUT (DUAL: TOMBOL FISIK & TOUCHSCREEN RESISTIF)
 // ============================================================================
 
@@ -2133,6 +2329,9 @@ void openSelectedMenu() {
   } else if (menuCursor == 5) {
     currentScreen = SCREEN_WIFI_CONFIG;
     drawWifiConfigScreen();
+  } else if (menuCursor == 6) {
+    currentScreen = SCREEN_SETTINGS;
+    drawSettingsScreen();
   }
 }
 
@@ -2248,6 +2447,19 @@ void handleInputs() {
     return;
   }
 
+  // INTERAKSI PENGGUNA TERDETEKSI:
+  // Jika layar TFT sedang dalam mode Auto-Sleep, sentuhan atau tombol apa saja
+  // akan membangunkan layar terlebih dahulu (mencegah salah pencet menu/opsi)
+  if (tftIsAsleep) {
+    wakeUpTFT();
+    screenTransitionPendingRelease = true;
+    lastActionTime = millis();
+    return;
+  }
+
+  // Perbarui waktu aktivitas terakhir pengguna untuk timer Auto-Sleep
+  lastUserInteractionTime = millis();
+
   // ==========================================================================
   // FITUR KHUSUS: TRIPLE-CLICK TOMBOL MERAH (PIN_BTN_BACK) -> TOGGLE MUTE TOTAL
   // ==========================================================================
@@ -2315,10 +2527,10 @@ void handleInputs() {
 
   // --- B. KONDISI DI LAYAR MENU ---
   else if (currentScreen == SCREEN_MENU) {
-    // 1. Tombol Fisik SELECT: Geser kursor sorotan ke item berikutnya (0..5)
+    // 1. Tombol Fisik SELECT: Geser kursor sorotan ke item berikutnya (0..6)
     if (btnSelectPressed) {
       beepTouch();
-      menuCursor = (menuCursor + 1) % 6;
+      menuCursor = (menuCursor + 1) % 7;
       drawMenuScreen();
       return;
     }
@@ -2365,22 +2577,24 @@ void handleInputs() {
         }
       }
 
-      // Deteksi menu yang disentuh untuk 6 item (itemH=26, gap=4, startY=34):
-      // Item 0 (Pusat Y=47):  touchY 28 s/d 61
-      // Item 1 (Pusat Y=77):  touchY 62 s/d 91
-      // Item 2 (Pusat Y=107): touchY 92 s/d 121
-      // Item 3 (Pusat Y=137): touchY 122 s/d 151
-      // Item 4 (Pusat Y=167): touchY 152 s/d 181
-      // Item 5 (Pusat Y=197): touchY 182 s/d 217
+      // Deteksi menu yang disentuh untuk 7 item (itemH=23, gap=4, startY=29):
+      // Item 0 (Y=29..52):   touchY 28 s/d 55
+      // Item 1 (Y=56..79):   touchY 55 s/d 82
+      // Item 2 (Y=83..106):  touchY 82 s/d 109
+      // Item 3 (Y=110..133): touchY 109 s/d 136
+      // Item 4 (Y=137..160): touchY 136 s/d 163
+      // Item 5 (Y=164..187): touchY 163 s/d 190
+      // Item 6 (Y=191..214): touchY 190 s/d 218
       int touchedItem = -1;
-      if (touchY >= 28 && touchY < 62)        touchedItem = 0;
-      else if (touchY >= 62 && touchY < 92)   touchedItem = 1;
-      else if (touchY >= 92 && touchY < 122)  touchedItem = 2;
-      else if (touchY >= 122 && touchY < 152) touchedItem = 3;
-      else if (touchY >= 152 && touchY < 182) touchedItem = 4;
-      else if (touchY >= 182 && touchY < 218) touchedItem = 5;
+      if (touchY >= 28 && touchY < 55)        touchedItem = 0;
+      else if (touchY >= 55 && touchY < 82)   touchedItem = 1;
+      else if (touchY >= 82 && touchY < 109)  touchedItem = 2;
+      else if (touchY >= 109 && touchY < 136) touchedItem = 3;
+      else if (touchY >= 136 && touchY < 163) touchedItem = 4;
+      else if (touchY >= 163 && touchY < 190) touchedItem = 5;
+      else if (touchY >= 190 && touchY < 218) touchedItem = 6;
 
-      if (touchedItem >= 0 && touchedItem < 6) {
+      if (touchedItem >= 0 && touchedItem < 7) {
         Serial.printf("[MENU TOUCH] Raw(X=%d, Y=%d) -> Screen(X=%d, Y=%d) => Menu Item %d\n",
                       p.x, p.y, touchX, touchY, touchedItem + 1);
 
@@ -2558,6 +2772,99 @@ void handleInputs() {
       return;
     }
   }
+
+  // --- F. KONDISI DI LAYAR PENGATURAN SISTEM (SETTINGS) ---
+  else if (currentScreen == SCREEN_SETTINGS) {
+    if (btnBackPressed) {
+      preferences.begin("qguard", false);
+      preferences.putInt("sleep_min", tftSleepMinutes);
+      preferences.end();
+      beepTouch();
+      currentScreen = SCREEN_MENU;
+      screenTransitionPendingRelease = true;
+      drawMenuScreen();
+      return;
+    }
+
+    if (btnSelectPressed) {
+      const int sleepOpts[6] = {1, 2, 3, 5, 10, 0};
+      int currIdx = 0;
+      for (int i = 0; i < 6; i++) {
+        if (sleepOpts[i] == tftSleepMinutes) {
+          currIdx = i;
+          break;
+        }
+      }
+      currIdx = (currIdx + 1) % 6;
+      tftSleepMinutes = sleepOpts[currIdx];
+      preferences.begin("qguard", false);
+      preferences.putInt("sleep_min", tftSleepMinutes);
+      preferences.end();
+      beepTouch();
+      drawSettingsScreen();
+      return;
+    }
+
+    if (btnConfirmPressed) {
+      preferences.begin("qguard", false);
+      preferences.putInt("sleep_min", tftSleepMinutes);
+      preferences.end();
+      beepSuccess();
+      currentScreen = SCREEN_MENU;
+      screenTransitionPendingRelease = true;
+      drawMenuScreen();
+      return;
+    }
+
+    if (touchTap) {
+      int touchX = map(p.x, TS_MINX, TS_MAXX, 0, 320);
+      touchX = constrain(touchX, 0, 320);
+      int touchY = map(p.y, TS_MINY, TS_MAXY, 240, 0);
+      touchY = constrain(touchY, 0, 240);
+
+      // Sentuh pilihan Menit Auto-Sleep (Y: 58..92)
+      if (touchY >= 58 && touchY <= 92) {
+        int selectedMin = -1;
+        if (touchX >= 10 && touchX < 60)        selectedMin = 1;
+        else if (touchX >= 60 && touchX < 110)  selectedMin = 2;
+        else if (touchX >= 110 && touchX < 160) selectedMin = 3;
+        else if (touchX >= 160 && touchX < 210) selectedMin = 5;
+        else if (touchX >= 210 && touchX < 258) selectedMin = 10;
+        else if (touchX >= 258 && touchX <= 310) selectedMin = 0;
+
+        if (selectedMin >= 0) {
+          tftSleepMinutes = selectedMin;
+          preferences.begin("qguard", false);
+          preferences.putInt("sleep_min", tftSleepMinutes);
+          preferences.end();
+          beepSuccess();
+          drawSettingsScreen();
+          return;
+        }
+      }
+
+      // Sentuh Toggle Mute Buzzer (Y: 125..158, X: 215..315)
+      if (touchY >= 125 && touchY <= 158 && touchX >= 215 && touchX <= 315) {
+        buzzerMuteTotal = !buzzerMuteTotal;
+        digitalWrite(PIN_BUZZER, LOW);
+        beepTouch();
+        drawSettingsScreen();
+        return;
+      }
+
+      // Sentuh Footer Bar (Y >= 215)
+      if (touchY >= 215) {
+        preferences.begin("qguard", false);
+        preferences.putInt("sleep_min", tftSleepMinutes);
+        preferences.end();
+        beepTouch();
+        currentScreen = SCREEN_MENU;
+        screenTransitionPendingRelease = true;
+        drawMenuScreen();
+        return;
+      }
+    }
+  }
 }
 
 // ============================================================================
@@ -2718,6 +3025,7 @@ void setup() {
   // Masuk ke Layar Monitor Utama
   currentScreen = SCREEN_MONITOR;
   drawMainMonitorScreen();
+  lastUserInteractionTime = millis();
   Serial.println(F("[Q-GUARD] Sistem SIAP dan Beroperasi Normal!"));
 }
 
@@ -2737,6 +3045,20 @@ void loop() {
 
   // 1. Tangani input tombol fisik dan sentuhan layar (prioritas tinggi)
   handleInputs();
+
+  // 1B. Auto-Sleep Layar TFT jika waktu idle pengguna melampaui batas menit yang disetting
+  if (tftSleepMinutes > 0 && !tftIsAsleep) {
+    unsigned long timeoutMs = (unsigned long)tftSleepMinutes * 60000UL;
+    if (currentMillis - lastUserInteractionTime >= timeoutMs) {
+      putTFTToSleep();
+    }
+  }
+
+  // 1C. Auto-Wake Darurat Karantina: Bangunkan layar instan jika terjadi alarm bahaya atau pintu terbuka
+  if (tftIsAsleep && (telemetry.doorOpen || strcmp(telemetry.riskLevel, "CRITICAL") == 0)) {
+    Serial.println(F("[SAFETY] Alarm darurat terdeteksi saat sleep! Membangunkan TFT LCD instan!"));
+    wakeUpTFT();
+  }
 
   // 2. Layani Web Server Captive Portal jika sedang di mode AP
   if (wifiState == WIFI_STATE_PORTAL) {
@@ -2801,12 +3123,15 @@ void loop() {
         telemetry.doorOpenStart = currentMillis;
         tripMetrics.doorBreachCount++;
         beepTouch();
+        if (tftIsAsleep) {
+          wakeUpTFT();
+        }
       } else {
         telemetry.doorTotalOpenSec += (currentMillis - telemetry.doorOpenStart) / 1000;
       }
       telemetry.doorOpen = currentDoorOpen;
       evaluateRiskScore();
-      if (currentScreen == SCREEN_MONITOR) {
+      if (!tftIsAsleep && currentScreen == SCREEN_MONITOR) {
         updateMainMonitorData();
       }
       if (wifiState == WIFI_STATE_CONNECTED) {
@@ -2835,7 +3160,7 @@ void loop() {
   }
 
   // 7. Perbarui tampilan data sensor setiap 1 detik (ZERO FLICKER: Hanya ubah angka tanpa fillScreen)
-  if (currentScreen == SCREEN_MONITOR && (currentMillis - lastDisplayRefresh >= 1000)) {
+  if (!tftIsAsleep && currentScreen == SCREEN_MONITOR && (currentMillis - lastDisplayRefresh >= 1000)) {
     lastDisplayRefresh = currentMillis;
     updateMainMonitorData();
   }
