@@ -1758,6 +1758,46 @@ body.theme-light {
     background: #0f172a;
 }
 
+/* Custom Modern Dark Leaflet Zoom Controls */
+.map-stage-wrapper .leaflet-control-zoom {
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    background: rgba(15, 23, 42, 0.88) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+    margin-bottom: 24px !important;
+    margin-right: 14px !important;
+}
+
+.map-stage-wrapper .leaflet-control-zoom a {
+    background: transparent !important;
+    color: #f8fafc !important;
+    width: 34px !important;
+    height: 34px !important;
+    line-height: 34px !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+    transition: all 0.2s ease;
+}
+
+.map-stage-wrapper .leaflet-control-zoom a:last-child {
+    border-bottom: none !important;
+}
+
+.map-stage-wrapper .leaflet-control-zoom a:hover {
+    background: rgba(2, 132, 199, 0.35) !important;
+    color: #38bdf8 !important;
+}
+
+/* Fallback: if zoom control is placed at top-left, push it below the HUD overlay */
+.map-stage-wrapper .leaflet-top.leaflet-left .leaflet-control-zoom {
+    margin-top: 65px !important;
+    margin-left: 14px !important;
+}
+
 /* Floating Live Telemetry HUD on Map */
 .map-hud-overlay {
     position: absolute;

@@ -207,7 +207,7 @@ function evaluateRisk(readings, thresholds = {}) {
     }
 
     // Overall weighted score (CACCR 60/25/15)
-    const overallRiskScore = Math.min(Math.round(
+    let overallRiskScore = Math.min(Math.round(
         tempScore * 0.60 + physicalScore * 0.25 + integrityScore * 0.15
     ), 100);
 
@@ -216,17 +216,64 @@ function evaluateRisk(readings, thresholds = {}) {
     else if (overallRiskScore >= 60) riskLevel = 'WARNING';
     else if (overallRiskScore >= 30) riskLevel = 'CAUTION';
 
+    // Biosecurity & Biological Safety Override:
+    // If core commodity temperature or physical impact suffered CRITICAL breaches,
+    // the overall risk level must elevate to CRITICAL (Red Lane) and cannot be diluted by zero-factors.
+    const hasCriticalFactor = factors.some(f => f.severity === 'CRITICAL');
+    if (hasCriticalFactor) {
+        riskLevel = 'CRITICAL';
+        if (overallRiskScore < 80) {
+            overallRiskScore = Math.max(overallRiskScore, 82);
+        }
+    } else if (factors.some(f => f.severity === 'WARNING')) {
+        if (riskLevel === 'NORMAL' || riskLevel === 'CAUTION') {
+            riskLevel = 'WARNING';
+            if (overallRiskScore < 60) overallRiskScore = 60;
+        }
+    }
+
     if (recommendations.length === 0) {
         recommendations.push('Integritas rantai dingin terjaga dalam batas aman. Memenuhi syarat penerbitan izin rilis jalur cepat (Jalur Hijau).');
     }
 
-    // Quality Retention Index (Rough estimate: 100% minus score * 0.8)
+    // Quality Retention Index (Rough estimate: 100% minus score * 0.75)
     const shelfLifeLossPercent = Math.min(Math.round(overallRiskScore * 0.75), 100);
     const qualityRetentionPercent = 100 - shelfLifeLossPercent;
+
+    // Official Quarantine Disposition Decision
+    let quarantineDisposition = {
+        verdict: 'PASSED',
+        lane: 'GREEN',
+        title: 'DISETUJUI (PELEPASAN)',
+        title_en: 'APPROVED (FAST-TRACK RELEASE)',
+        sub: 'Jalur Hijau',
+        sub_en: 'Green Channel Fast-Track'
+    };
+
+    if (riskLevel === 'CRITICAL') {
+        quarantineDisposition = {
+            verdict: 'HOLD_LAB_TEST',
+            lane: 'RED',
+            title: 'PENAHANAN & UJI LAB',
+            title_en: 'DETENTION & LAB ASSAY',
+            sub: 'Jalur Merah (Pemeriksaan Fisik & Uji Lab)',
+            sub_en: 'Red Channel (Lab Assay & Culture)'
+        };
+    } else if (riskLevel === 'WARNING' || riskLevel === 'CAUTION') {
+        quarantineDisposition = {
+            verdict: 'CONDITIONAL_INSPECTION',
+            lane: 'YELLOW',
+            title: 'INSPEKSI FISIK (HOLD)',
+            title_en: 'PHYSICAL INSPECTION (HOLD)',
+            sub: 'Jalur Kuning (Inspeksi Fisik)',
+            sub_en: 'Yellow Channel (Inspection & Sampling)'
+        };
+    }
 
     return {
         overall_risk_score: overallRiskScore,
         risk_level: riskLevel,
+        quarantine_disposition: quarantineDisposition,
         mkt_celsius: mkt,
         mkt_probe_1: mktP1,
         mkt_probe_2: mktP2,

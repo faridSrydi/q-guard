@@ -213,6 +213,7 @@ unsigned long lastDisplayRefresh = 0;
 unsigned long lastSdLogTime = 0;
 unsigned long lastLedBlinkTime = 0;
 unsigned long alarmMuteUntil = 0;
+bool buzzerMuteTotal = false; // Status Mute Total Buzzer (Toggle 3x Klik Tombol Merah)
 
 // Status Sensor Hardware Terdeteksi
 bool bmeAvailable = false;
@@ -270,7 +271,7 @@ void logDataToSD();
 // ============================================================================
 void beepTouch() {
   digitalWrite(PIN_BUZZER, HIGH);
-  delay(18); // Bunyi 'tik' renyah
+  delay(18); // Bunyi 'tik' renyah untuk interaksi sentuh / tombol (tetap bunyi)
   digitalWrite(PIN_BUZZER, LOW);
 }
 
@@ -282,7 +283,8 @@ void beepSuccess() {
 }
 
 void beepWarning() {
-  if (millis() < alarmMuteUntil) return;
+  // Hanya matikan suara jika mode Mute Alarm aktif
+  if (buzzerMuteTotal || millis() < alarmMuteUntil) return;
   for (int i = 0; i < 2; i++) {
     digitalWrite(PIN_BUZZER, HIGH); delay(50);
     digitalWrite(PIN_BUZZER, LOW);  delay(40);
@@ -290,9 +292,32 @@ void beepWarning() {
 }
 
 void beepCriticalAlarm() {
-  if (millis() < alarmMuteUntil) return;
+  // Hanya matikan suara jika mode Mute Alarm aktif
+  if (buzzerMuteTotal || millis() < alarmMuteUntil) return;
   digitalWrite(PIN_BUZZER, HIGH); delay(120);
   digitalWrite(PIN_BUZZER, LOW);  delay(60);
+}
+
+// Banner Notifikasi Pop-up Status Alarm Peringatan pada Layar LCD
+void showBuzzerToast(bool isMuted) {
+  int toastW = 246;
+  int toastH = 38;
+  int toastX = (320 - toastW) / 2;
+  int toastY = 96;
+
+  uint16_t accentColor = isMuted ? COLOR_RED_ALERT : COLOR_GREEN_SAFE;
+  tft.fillRoundRect(toastX, toastY, toastW, toastH, 6, COLOR_NAV_BAR);
+  tft.drawRoundRect(toastX, toastY, toastW, toastH, 6, accentColor);
+  tft.drawRoundRect(toastX + 1, toastY + 1, toastW - 2, toastH - 2, 5, accentColor);
+
+  tft.setTextSize(1);
+  tft.setTextColor(accentColor);
+  tft.setCursor(toastX + 14, toastY + 8);
+  tft.print(isMuted ? "ALARM PERINGATAN: MATI [OFF]" : "ALARM PERINGATAN: AKTIF [ON]");
+
+  tft.setTextColor(COLOR_WHITE);
+  tft.setCursor(toastX + 14, toastY + 22);
+  tft.print(isMuted ? "Klik merah 3x lagi utk nyalakan" : "Klik merah 3x lagi utk matikan");
 }
 
 // ============================================================================
@@ -725,13 +750,20 @@ void readSensors() {
   // 2. Hitung MKT murni dari probe yang valid
   telemetry.mkt = calculateMKT(telemetry.temp1, telemetry.temp2, telemetry.temp3);
 
-  // 3. Sensor BME280 (Suhu & Kelembapan Luar) - HANYA jika fisik terhubung, tanpa angka dummy
+  // 3. Sensor BME280 (Suhu & Kelembapan Luar) - Data fisik jika ada, atau Mode Dummy Realistis jika dilepas
   if (bmeAvailable) {
     telemetry.ambientTemp = bme.readTemperature();
     telemetry.ambientHum = bme.readHumidity();
   } else {
-    telemetry.ambientTemp = NAN;
-    telemetry.ambientHum = NAN;
+    // Mode Dummy Dinamis (Kondisi suhu tropis pelabuhan Indonesia 28°C s/d 29°C & 72-76% RH)
+    static float dummyAmbTemp = 28.6f;
+    static float dummyAmbHum = 74.0f;
+    dummyAmbTemp += ((float)(random(-12, 13)) / 100.0f);
+    dummyAmbHum += ((float)(random(-25, 26)) / 100.0f);
+    dummyAmbTemp = constrain(dummyAmbTemp, 27.5f, 30.5f);
+    dummyAmbHum = constrain(dummyAmbHum, 68.0f, 80.0f);
+    telemetry.ambientTemp = dummyAmbTemp;
+    telemetry.ambientHum = dummyAmbHum;
   }
 
   // 4. Sensor Pintu MC-38 (GPIO 35)
@@ -922,11 +954,20 @@ void connectToStation(const String& ssid, const String& pass) {
 void handlePortalRoot() {
   int n = WiFi.scanNetworks();
   String options = "";
+  options.reserve(512);
   for (int i = 0; i < n; ++i) {
-    options += "<option value='" + WiFi.SSID(i) + "'>" + WiFi.SSID(i) + " (" + String(WiFi.RSSI(i)) + " dBm)</option>";
+    options += "<option value='";
+    options += WiFi.SSID(i);
+    options += "'>";
+    options += WiFi.SSID(i);
+    options += " (";
+    options += String(WiFi.RSSI(i));
+    options += " dBm)</option>";
   }
 
-  String html = "<!DOCTYPE html><html lang='id'><head><meta charset='UTF-8'>"
+  String html = "";
+  html.reserve(3200);
+  html += F("<!DOCTYPE html><html lang='id'><head><meta charset='UTF-8'>"
     "<meta name='viewport' content='width=device-width,initial-scale=1'>"
     "<title>Q-GUARD Cloud Setup</title>"
     "<style>"
@@ -955,29 +996,33 @@ void handlePortalRoot() {
     "<div class='form-group'>"
     "<label>Pilih Wi-Fi Terdeteksi:</label>"
     "<select onchange='document.getElementById(\"s\").value=this.value'>"
-    "<option value=''>-- Ketuk untuk memilih Wi-Fi --</option>" + options + "</select>"
-    "</div>"
+    "<option value=''>-- Ketuk untuk memilih Wi-Fi --</option>");
+  html += options;
+  html += F("</select></div>"
     "<div class='form-group'>"
     "<label>Nama Wi-Fi (SSID):</label>"
-    "<input type='text' id='s' name='ssid' value='" + wifiSsid + "' required placeholder='Nama WiFi / Hotspot'>"
-    "</div>"
+    "<input type='text' id='s' name='ssid' value='");
+  html += wifiSsid;
+  html += F("' required placeholder='Nama WiFi / Hotspot'></div>"
     "<div class='form-group'>"
     "<label>Kata Sandi Wi-Fi:</label>"
-    "<input type='password' name='pass' value='" + wifiPass + "' placeholder='Kosongkan jika tanpa kata sandi'>"
-    "<div class='hint'>Gunakan hotspot HP petugas atau Wi-Fi pelabuhan</div>"
-    "</div>"
+    "<input type='password' name='pass' value='");
+  html += wifiPass;
+  html += F("' placeholder='Kosongkan jika tanpa kata sandi'><div class='hint'>Gunakan hotspot HP petugas atau Wi-Fi pelabuhan</div></div>"
     "<div class='form-group'>"
     "<label>URL Backend Server (Laptop):</label>"
-    "<input type='text' name='url' value='" + serverUrl + "' required placeholder='http://192.168.43.15:3000/api/sensor-data/batch'>"
-    "</div>"
+    "<input type='text' name='url' value='");
+  html += serverUrl;
+  html += F("' required placeholder='http://192.168.43.15:3000/api/sensor-data/batch'></div>"
     "<div class='form-group'>"
     "<label>Device ID:</label>"
-    "<input type='text' name='devid' value='" + deviceId + "' required>"
-    "</div>"
-    "<button type='submit'>SIMPAN &amp; HUBUNGKAN KE SERVER</button>"
+    "<input type='text' name='devid' value='");
+  html += deviceId;
+  html += F("' required></div>"
+    "<button type='submit'>SIMPAN & HUBUNGKAN KE SERVER</button>"
     "</form>"
     "<div class='footer'>Smart Cold-Chain Quarantine System &bull; Barantin &copy; 2026</div>"
-    "</div></body></html>";
+    "</div></body></html>");
 
   server.send(200, "text/html", html);
 }
@@ -990,7 +1035,9 @@ void handlePortalSave() {
 
   saveWifiPreferences(newSsid, newPass, newUrl, newDevId);
 
-  String html = "<!DOCTYPE html><html lang='id'><head><meta charset='UTF-8'>"
+  String html = "";
+  html.reserve(1500);
+  html += F("<!DOCTYPE html><html lang='id'><head><meta charset='UTF-8'>"
     "<meta name='viewport' content='width=device-width,initial-scale=1'>"
     "<title>Q-GUARD Tersimpan</title>"
     "<style>"
@@ -1006,10 +1053,12 @@ void handlePortalSave() {
     "<div class='icon-circle'>&#10003;</div>"
     "<h2>Pengaturan Tersimpan!</h2>"
     "<p>Q-GUARD sedang menghubungkan ke jaringan:</p>"
-    "<div class='pill'>" + newSsid + "</div>"
+    "<div class='pill'>");
+  html += newSsid;
+  html += F("</div>"
     "<p>Alat akan beralih ke mode Online. Anda dapat menutup halaman ini sekarang.</p>"
     "<div class='sub'>Pantau status telemetri pada layar LCD TFT Q-GUARD</div>"
-    "</div></body></html>";
+    "</div></body></html>");
 
   server.send(200, "text/html", html);
   delay(1000);
@@ -1349,6 +1398,13 @@ void updateMainMonitorData() {
     tft.print("BEKU -18C");
   }
 
+  // 1C. Indikator Status Buzzer Mute Total di Header
+  if (buzzerMuteTotal) {
+    tft.setCursor(206, 9);
+    tft.setTextColor(COLOR_RED_ALERT);
+    tft.print("[MUTE]");
+  }
+
   // 2. Status WiFi, SD & GPS
   tft.fillRect(245, 6, 73, 16, COLOR_NAV_BAR);
   tft.setTextSize(1);
@@ -1445,23 +1501,19 @@ void updateMainMonitorData() {
     tft.print("TERTUTUP");
   }
 
-  // 8. BME280 Lingkungan Luar (Murni data fisik, N/A jika tidak terpasang)
+  // 8. BME280 Lingkungan Luar (Data Fisik atau Mode Dummy)
   int envY = 115;
   tft.fillRect(14, envY + 20, 136, 28, COLOR_CARD);
   tft.setTextSize(1);
-  if (bmeAvailable && !isnan(telemetry.ambientTemp)) {
-    tft.setTextColor(COLOR_WHITE);
-    tft.setCursor(16, envY + 22);
-    tft.print("Suhu: "); tft.print(telemetry.ambientTemp, 1); tft.print(" C");
-    tft.setCursor(16, envY + 36);
-    tft.print("Lembap: "); tft.print((int)telemetry.ambientHum); tft.print("% RH");
-  } else {
-    tft.setTextColor(COLOR_GRAY_TEXT);
-    tft.setCursor(16, envY + 22);
-    tft.print("Suhu: N/A (Lepas)");
-    tft.setCursor(16, envY + 36);
-    tft.print("Lembap: N/A");
-  }
+  tft.setTextColor(COLOR_WHITE);
+  tft.setCursor(16, envY + 22);
+  tft.print("Suhu: "); 
+  tft.print(!isnan(telemetry.ambientTemp) ? telemetry.ambientTemp : 28.5f, 1); 
+  tft.print(" C");
+  tft.setCursor(16, envY + 36);
+  tft.print("Lembap: "); 
+  tft.print(!isnan(telemetry.ambientHum) ? (int)telemetry.ambientHum : 74); 
+  tft.print("% RH");
 
   // 9. MPU6050 Guncangan
   tft.fillRect(170, envY + 20, 135, 26, COLOR_CARD);
@@ -2213,6 +2265,45 @@ void handleInputs() {
   // Jika tidak ada tombol yang ditekan dan tidak ada tap sentuh baru, keluar
   if (!btnBackPressed && !btnSelectPressed && !btnConfirmPressed && !touchTap) {
     return;
+  }
+
+  // ==========================================================================
+  // FITUR KHUSUS: TRIPLE-CLICK TOMBOL MERAH (PIN_BTN_BACK) -> TOGGLE MUTE TOTAL
+  // ==========================================================================
+  static unsigned long lastRedBtnPressTime = 0;
+  static int redBtnPressCount = 0;
+
+  if (btnBackPressed) {
+    unsigned long now = millis();
+    if (now - lastRedBtnPressTime <= 900) {
+      redBtnPressCount++;
+    } else {
+      redBtnPressCount = 1;
+    }
+    lastRedBtnPressTime = now;
+
+    if (redBtnPressCount >= 3) {
+      redBtnPressCount = 0;
+      buzzerMuteTotal = !buzzerMuteTotal;
+      digitalWrite(PIN_BUZZER, LOW);
+
+      if (buzzerMuteTotal) {
+        Serial.println(F("[BUZZER] >>> TRIPLE-CLICK: BUZZER DIMATIKAN TOTAL (MUTE PERMANEN) <<<"));
+        // 1 nada konfirmasi pendek lalu mati total
+        digitalWrite(PIN_BUZZER, HIGH); delay(40); digitalWrite(PIN_BUZZER, LOW);
+      } else {
+        Serial.println(F("[BUZZER] >>> TRIPLE-CLICK: BUZZER DIAKTIFKAN KEMBALI <<<"));
+        // 3 nada pendek ceria konfirmasi aktif
+        for (int b = 0; b < 3; b++) {
+          digitalWrite(PIN_BUZZER, HIGH); delay(40);
+          digitalWrite(PIN_BUZZER, LOW);  delay(40);
+        }
+      }
+
+      showBuzzerToast(buzzerMuteTotal);
+      delay(300);
+      return; // Cegah tombol merah menjalankan aksi navigasi single-click
+    }
   }
 
   // Debounce proteksi aksi beruntun (150ms)

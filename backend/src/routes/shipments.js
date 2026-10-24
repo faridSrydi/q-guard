@@ -142,6 +142,30 @@ router.post('/', optionalAuth, (req, res) => {
         }
 
         const now = new Date().toISOString();
+        const cleanDeviceId = device_id ? String(device_id).trim() : null;
+
+        // Auto-provision device if it does not exist in devices table yet (prevents foreign key errors)
+        if (cleanDeviceId) {
+            const existingDevice = db.prepare('SELECT id FROM devices WHERE id = ?').get(cleanDeviceId);
+            if (!existingDevice) {
+                db.prepare(`
+                    INSERT INTO devices (id, name, status, created_at, updated_at)
+                    VALUES (?, ?, 'registered', ?, ?)
+                `).run(cleanDeviceId, `Unit ${cleanDeviceId}`, now, now);
+                logger.info(`Auto-provisioned device: ${cleanDeviceId}`);
+            }
+        }
+
+        const parseTemp = (val, defaultVal) => {
+            if (val === undefined || val === null || val === '') return defaultVal;
+            if (typeof val === 'string') val = val.replace(',', '.');
+            const n = parseFloat(val);
+            return isNaN(n) ? defaultVal : n;
+        };
+
+        const parsedMin = parseTemp(temp_min, -25.0);
+        const parsedMax = parseTemp(temp_max, -18.0);
+
         db.prepare(`
             INSERT INTO shipments (
                 id, device_id, commodity, origin, destination, status,
@@ -149,13 +173,13 @@ router.post('/', optionalAuth, (req, res) => {
             ) VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)
         `).run(
             shipmentId,
-            device_id || null,
+            cleanDeviceId,
             commodity || 'Frozen Product',
             origin || 'Origin Facility',
             destination || 'Destination Facility',
             now,
-            temp_min !== undefined ? parseFloat(temp_min) : -25.0,
-            temp_max !== undefined ? parseFloat(temp_max) : -18.0,
+            parsedMin,
+            parsedMax,
             notes || null,
             now,
             now
@@ -166,19 +190,19 @@ router.post('/', optionalAuth, (req, res) => {
             message: 'Shipment created successfully',
             shipment: {
                 id: shipmentId,
-                device_id,
+                device_id: cleanDeviceId,
                 commodity: commodity || 'Frozen Product',
                 origin: origin || 'Origin Facility',
                 destination: destination || 'Destination Facility',
                 status: 'active',
-                temp_min: temp_min !== undefined ? parseFloat(temp_min) : -25.0,
-                temp_max: temp_max !== undefined ? parseFloat(temp_max) : -18.0,
+                temp_min: parsedMin,
+                temp_max: parsedMax,
                 started_at: now
             }
         });
     } catch (err) {
         logger.error(`Error creating shipment: ${err.message}`);
-        res.status(500).json({ error: 'Failed to create shipment' });
+        res.status(500).json({ error: `Failed to create shipment: ${err.message}` });
     }
 });
 

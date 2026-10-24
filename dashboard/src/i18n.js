@@ -25,7 +25,7 @@ export const translations = {
     hero: {
       eyebrow_org: "BADAN KARANTINA INDONESIA",
       eyebrow_sub: "MONITORING RANTAI DINGIN",
-      title: "Pengawasan <span class=\"hero-title-highlight\">Rantai Dingin Maritim</span> Berbasis IoT &amp; AI",
+      title: "Pengawasan <span class=\"hero-title-highlight\">Rantai Dingin Maritim</span> Berbasis IoT & AI",
       lead: "Pemantauan suhu komoditas dan integritas kontainer selama pelayaran untuk menjamin mutu kargo hingga pelepasan karantina.",
       btn_dashboard: "Masuk Dashboard",
       btn_simulator: "Simulator",
@@ -36,7 +36,7 @@ export const translations = {
     },
     sec1: {
       kicker: "01 / TANTANGAN LOGISTIK MARITIM",
-      heading: "Titik Buta Laut Lepas &amp; Risiko Pembekuan Ulang",
+      heading: "Titik Buta Laut Lepas & Risiko Pembekuan Ulang",
       subtext: "Pemeriksaan manual saat kargo tiba di dermaga tidak dapat merekam fluktuasi suhu yang terjadi selama hari-hari pelayaran di laut lepas.",
       card1_title: "Ketiadaan Sinyal di Laut Lepas (Blank-Spot)",
       card1_desc: "Jalur pelayaran antarpulau tidak terjangkau jaringan seluler. Ketika suplai daya pendingin terganggu di laut lepas, ketiadaan data riwayat menyebabkan kerusakan baru disadari saat kargo tiba di pelabuhan tujuan.",
@@ -52,18 +52,18 @@ export const translations = {
       kicker: "02 / ALUR OPERASIONAL",
       heading: "Prosedur Pemantauan dari Pelabuhan Asal ke Tujuan",
       subtext: "Alur kerja terstandarisasi yang beroperasi mandiri saat kapal berlayar dan tersinkronisasi otomatis saat bersandar di pelabuhan.",
-      step1_title: "1. Pemasangan &amp; Segel Asal",
+      step1_title: "1. Pemasangan & Segel Asal",
       step1_desc: "Petugas karantina memasang sensor pada inti komoditas, buffer es, dan area pintu kontainer di pelabuhan muat, kemudian menguncinya dengan segel bernomor seri resmi.",
       step2_title: "2. Perekaman Data Offline",
       step2_desc: "Perangkat membaca seluruh sensor secara periodik dan menyimpannya ke penyimpanan lokal MicroSD tanpa bergantung pada koneksi internet di laut lepas.",
       step3_title: "3. Sinkronisasi Data Pelabuhan",
       step3_desc: "Saat kargo tiba di pelabuhan tujuan, perangkat otomatis mengunggah seluruh log perjalanan ke server melalui jaringan Wi-Fi dermaga atau seluler.",
-      step4_title: "4. Evaluasi &amp; Rekomendasi",
+      step4_title: "4. Evaluasi & Rekomendasi",
       step4_desc: "Sistem menghitung parameter Mean Kinetic Temperature (MKT) dan evaluasi risiko, lalu menerbitkan rekomendasi jalur karantina (Hijau/Kuning/Merah)."
     },
     sec3: {
       kicker: "03 / SPESIFIKASI SENSOR",
-      heading: "Konfigurasi Sensor Tri-Probe &amp; Telemetri",
+      heading: "Konfigurasi Sensor Tri-Probe & Telemetri",
       subtext: "Pengukuran suhu multi-titik untuk mendeteksi deviasi termal sebelum merambat ke komoditas inti kargo.",
       showcase_pill: "SKEMA PENEMPATAN SENSOR • KONTAINER PENDINGIN REEFER",
       showcase_zoom: "Perbesar Gambar",
@@ -72,7 +72,7 @@ export const translations = {
       t1_badge: "PROBE T1 • INTI KOMODITAS",
       t1_depth: "Penetrasi pada kedalaman komoditas",
       t1_title: "Suhu Inti Kargo (DS18B20)",
-      t1_desc: "Memantau suhu bagian dalam komoditas untuk memastikan kondisi beku stabil sesuai standar batas kelayakan biologis (&le; -18.0°C).",
+      t1_desc: "Memantau suhu bagian dalam komoditas untuk memastikan kondisi beku stabil sesuai standar batas kelayakan biologis (≤ -18.0°C).",
       t1_std: "Standar Codex CAC/RCP 8-1976",
       t2_badge: "PROBE T2 • THERMAL BUFFER",
       t2_depth: "Lapisan es / ruang tengah kontainer",
@@ -80,15 +80,15 @@ export const translations = {
       t2_desc: "Mengukur ketahanan termal media es penyangga di sekitar produk saat terjadi jeda pasokan daya listrik pada kontainer.",
       t2_std: "Buffer Termal Laten",
       t3_badge: "PROBE T3 • AMBANG PINTU",
-      t3_depth: "Perimeter karet paking &amp; aliran udara",
-      t3_title: "Deteksi Celah &amp; Kebocoran",
+      t3_depth: "Perimeter karet paking & aliran udara",
+      t3_title: "Deteksi Celah & Kebocoran",
       t3_desc: "Mendeteksi kebocoran udara hangat atau bukaan pintu lebih awal sebelum perubahan suhu merambat ke inti komoditas.",
       t3_std: "Deteksi Gradien Suhu Dini",
       door_title: "Sensor Pintu Magnetik (MC-38)",
       door_desc: "Mencatat waktu dan durasi bukaan pintu kontainer selama perjalanan.",
-      shock_title: "Sensor Akselerasi &amp; Guncangan (MPU6050)",
+      shock_title: "Sensor Akselerasi & Guncangan (MPU6050)",
       shock_desc: "Memonitor guncangan dan benturan fisik selama proses transportasi dan bongkar muat.",
-      bme_title: "Sensor Lingkungan &amp; Kelembaban (BME280)",
+      bme_title: "Sensor Lingkungan & Kelembaban (BME280)",
       bme_desc: "Memantau suhu dan kelembaban udara ruang kontainer (% RH) untuk deteksi kondensasi.",
       gps_title: "Geolokasi Maritim (NEO-6M GPS)",
       gps_desc: "Mencatat titik koordinat rute pelayaran dan pelabuhan transit."
@@ -106,7 +106,7 @@ export const translations = {
       chart_heading: "Kurva Suhu Tri-Probe (24 Jam)",
       chart_caption: "Sensor DS18B20 (T1, T2, T3) vs Batas Kritis -18°C",
       live_pill: "SIMULATOR AKTIF",
-      panel_heading: "Telemetri &amp; Rekomendasi",
+      panel_heading: "Telemetri & Rekomendasi",
       lbl_t1: "T1 (Inti Komoditas)",
       lbl_t2: "T2 (Buffer Es)",
       lbl_t3: "T3 (Ambang Pintu)",
@@ -117,8 +117,8 @@ export const translations = {
       verdict_kicker: "REKOMENDASI KARANTINA"
     },
     sec5: {
-      kicker: "05 / EFISIENSI &amp; DAMPAK",
-      heading: "Manfaat bagi Pengawasan Karantina &amp; Logistik",
+      kicker: "05 / EFISIENSI & DAMPAK",
+      heading: "Manfaat bagi Pengawasan Karantina & Logistik",
       subtext: "Meningkatkan akurasi pengawasan karantina dan kelancaran arus barang di pelabuhan.",
       card1_title: "Pelepasan Kargo Lebih Cepat",
       card1_desc: "Kontainer dengan riwayat rantai dingin normal dapat langsung dirilis melalui Jalur Hijau tanpa harus menunggu hasil uji laboratorium berhari-hari.",
@@ -126,7 +126,7 @@ export const translations = {
       card2_title: "Pemeriksaan Laboratorium Terarah",
       card2_desc: "Pengujian laboratorium difokuskan hanya pada kargo yang mengalami deviasi suhu di atas ambang batas kritis selama pelayaran.",
       card2_tag: "Optimalisasi Uji Sampel",
-      card3_title: "Validasi Data &amp; Audit Trail",
+      card3_title: "Validasi Data & Audit Trail",
       card3_desc: "Catatan telemetri terenkripsi menyediakan bukti objektif dan terverifikasi untuk verifikasi kepatuhan dan penyelesaian audit logistik.",
       card3_tag: "Akuntabilitas Data"
     },
@@ -157,11 +157,11 @@ export const translations = {
       btn: "Masuk ke Dashboard"
     },
     footer: {
-      tagline: "Sistem Pemantauan Rantai Dingin Komoditas Ekspor-Impor Berbasis IoT &amp; Analisis Risiko.",
-      org: "Badan Karantina Indonesia (Barantin) &copy; 2026",
+      tagline: "Sistem Pemantauan Rantai Dingin Komoditas Ekspor-Impor Berbasis IoT & Analisis Risiko.",
+      org: "Badan Karantina Indonesia (Barantin) © 2026",
       nav_title: "Navigasi",
       standards_title: "Standar Regulasi",
-      copyright: "&copy; 2026 Q-GUARD • Sistem Pemantauan Rantai Dingin Karantina. Seluruh Hak Cipta Dilindungi."
+      copyright: "© 2026 Q-GUARD • Sistem Pemantauan Rantai Dingin Karantina. Seluruh Hak Cipta Dilindungi."
     },
     login: {
       title: "Portal Petugas Barantin",
@@ -173,7 +173,7 @@ export const translations = {
       hint_pwd: "Sandi:",
       btn_submit: "Masuk ke Dashboard",
       btn_back: "Kembali ke Beranda",
-      copyright: "Badan Karantina Indonesia &copy; 2026"
+      copyright: "Badan Karantina Indonesia © 2026"
     },
     sidebar: {
       portal: "Halaman Utama",
@@ -304,7 +304,7 @@ export const translations = {
     hero: {
       eyebrow_org: "INDONESIAN QUARANTINE AGENCY",
       eyebrow_sub: "COLD-CHAIN RISK MONITORING",
-      title: "IoT &amp; AI-Based <span class=\"hero-title-highlight\">Maritime Cold-Chain</span> Surveillance",
+      title: "IoT & AI-Based <span class=\"hero-title-highlight\">Maritime Cold-Chain</span> Surveillance",
       lead: "Real-time monitoring of cargo core temperature and container integrity during maritime voyage to ensure quality clearance.",
       btn_dashboard: "Open Dashboard",
       btn_simulator: "Simulator",
@@ -315,7 +315,7 @@ export const translations = {
     },
     sec1: {
       kicker: "01 / MARITIME LOGISTICS CHALLENGES",
-      heading: "High-Seas Blind Spots &amp; Re-Freezing Risks",
+      heading: "High-Seas Blind Spots & Re-Freezing Risks",
       subtext: "Manual arrival spot-checks cannot verify the continuous thermal stability maintained over multi-day voyage on the high seas.",
       card1_title: "High-Seas Signal Blind Spots (Blank-Spot)",
       card1_desc: "Inter-island maritime routes lack cellular coverage. When refrigeration power fails at sea, the absence of continuous historical logs leaves spoilage undetected until arrival at destination.",
@@ -331,18 +331,18 @@ export const translations = {
       kicker: "02 / OPERATIONAL WORKFLOW",
       heading: "Monitoring Procedures from Origin to Destination Port",
       subtext: "A standardized workflow operating autonomously during vessel voyages and synchronizing automatically upon docking.",
-      step1_title: "1. Installation &amp; Origin Seal",
+      step1_title: "1. Installation & Origin Seal",
       step1_desc: "Quarantine officers insert sensors at commodity core, ice buffer, and container door at origin port, then lock the unit with official serialized seals.",
       step2_title: "2. Offline Data Logging",
       step2_desc: "The device periodically polls all sensors and saves records to local MicroSD flash storage, fully independent of cellular connectivity at sea.",
       step3_title: "3. Portside Synchronization",
       step3_desc: "Upon arrival at destination harbor, the device automatically uploads all voyage logs to cloud servers via dockside Wi-Fi or cellular uplink.",
-      step4_title: "4. Risk Evaluation &amp; Verdict",
+      step4_title: "4. Risk Evaluation & Verdict",
       step4_desc: "The system computes Mean Kinetic Temperature (MKT) and multi-factor risk scores, instantly generating quarantine lane recommendations (Green/Yellow/Red)."
     },
     sec3: {
       kicker: "03 / SENSOR SPECIFICATIONS",
-      heading: "Tri-Probe Sensor &amp; Telemetry Architecture",
+      heading: "Tri-Probe Sensor & Telemetry Architecture",
       subtext: "Multi-point thermal mapping designed to capture gradient shifts before heat penetrates inner cargo core.",
       showcase_pill: "SENSOR PLACEMENT SCHEMATIC • REEFER CONTAINER",
       showcase_zoom: "Enlarge Image",
@@ -351,7 +351,7 @@ export const translations = {
       t1_badge: "PROBE T1 • COMMODITY CORE",
       t1_depth: "Penetrated inside core commodity",
       t1_title: "Core Cargo Temp (DS18B20)",
-      t1_desc: "Continuously tracks deep internal product temperature to ensure compliance with biological frozen food safety limits (&le; -18.0°C).",
+      t1_desc: "Continuously tracks deep internal product temperature to ensure compliance with biological frozen food safety limits (≤ -18.0°C).",
       t1_std: "Codex Standard CAC/RCP 8-1976",
       t2_badge: "PROBE T2 • THERMAL BUFFER",
       t2_depth: "Ice layer / container center volume",
@@ -359,15 +359,15 @@ export const translations = {
       t2_desc: "Measures thermal resilience of ice buffer surrounding product during reefer power disruptions.",
       t2_std: "Latent Thermal Buffer",
       t3_badge: "PROBE T3 • DOOR PERIMETER",
-      t3_depth: "Gasket perimeter &amp; air circulation",
-      t3_title: "Gap &amp; Leakage Detection",
+      t3_depth: "Gasket perimeter & air circulation",
+      t3_title: "Gap & Leakage Detection",
       t3_desc: "Detects warm ambient air ingress or door seal breach early before thermal changes reach cargo core.",
       t3_std: "Early Thermal Gradient",
       door_title: "Magnetic Door Sensor (MC-38)",
       door_desc: "Logs timestamp and duration of container door openings during voyage.",
-      shock_title: "Acceleration &amp; Shock Sensor (MPU6050)",
+      shock_title: "Acceleration & Shock Sensor (MPU6050)",
       shock_desc: "Monitors physical impacts and handling shocks during transit and unloading.",
-      bme_title: "Environmental &amp; Humidity Sensor (BME280)",
+      bme_title: "Environmental & Humidity Sensor (BME280)",
       bme_desc: "Monitors container ambient temperature and relative humidity (% RH) for condensation risk.",
       gps_title: "Maritime Geolocation (NEO-6M GPS)",
       gps_desc: "Records vessel voyage coordinates and transit harbor checkpoints."
@@ -385,7 +385,7 @@ export const translations = {
       chart_heading: "Tri-Probe Temperature Curve (24 Hours)",
       chart_caption: "DS18B20 Sensors (T1, T2, T3) vs Critical Limit -18°C",
       live_pill: "SIMULATOR ACTIVE",
-      panel_heading: "Telemetry &amp; Recommendation",
+      panel_heading: "Telemetry & Recommendation",
       lbl_t1: "T1 (Commodity Core)",
       lbl_t2: "T2 (Ice Buffer)",
       lbl_t3: "T3 (Door Threshold)",
@@ -396,8 +396,8 @@ export const translations = {
       verdict_kicker: "QUARANTINE RECOMMENDATION"
     },
     sec5: {
-      kicker: "05 / EFFICIENCY &amp; IMPACT",
-      heading: "Benefits for Quarantine Inspection &amp; Logistics",
+      kicker: "05 / EFFICIENCY & IMPACT",
+      heading: "Benefits for Quarantine Inspection & Logistics",
       subtext: "Enhances quarantine inspection precision and port cargo velocity.",
       card1_title: "Accelerated Cargo Clearance",
       card1_desc: "Containers maintaining compliant temperature profiles are cleared immediately via Green Lane without waiting days for lab culture results.",
@@ -405,7 +405,7 @@ export const translations = {
       card2_title: "Targeted Laboratory Testing",
       card2_desc: "Lab testing resources are precisely focused on cargo that breached critical thermal thresholds during voyage.",
       card2_tag: "Sampling Optimization",
-      card3_title: "Data Validation &amp; Audit Trail",
+      card3_title: "Data Validation & Audit Trail",
       card3_desc: "Encrypted telemetry records provide tamper-evident proof for regulatory compliance verification and logistics audits.",
       card3_tag: "Data Accountability"
     },
@@ -436,11 +436,11 @@ export const translations = {
       btn: "Sign in to Dashboard"
     },
     footer: {
-      tagline: "IoT &amp; Risk-Based Cold Chain Monitoring System for Export-Import Perishables.",
-      org: "Indonesian Quarantine Agency (Barantin) &copy; 2026",
+      tagline: "IoT & Risk-Based Cold Chain Monitoring System for Export-Import Perishables.",
+      org: "Indonesian Quarantine Agency (Barantin) © 2026",
       nav_title: "Navigation",
       standards_title: "Regulatory Standards",
-      copyright: "&copy; 2026 Q-GUARD • Quarantine Cold Chain Monitoring System. All Rights Reserved."
+      copyright: "© 2026 Q-GUARD • Quarantine Cold Chain Monitoring System. All Rights Reserved."
     },
     login: {
       title: "Barantin Officer Portal",
@@ -452,7 +452,7 @@ export const translations = {
       hint_pwd: "Password:",
       btn_submit: "Sign in to Dashboard",
       btn_back: "Back to Home",
-      copyright: "Indonesian Quarantine Agency &copy; 2026"
+      copyright: "Indonesian Quarantine Agency © 2026"
     },
     sidebar: {
       portal: "Home Portal",
@@ -636,8 +636,15 @@ export function applyTranslations(root = document) {
   const elements = root.querySelectorAll('[data-i18n]');
   elements.forEach(el => {
     const key = el.getAttribute('data-i18n');
-    const val = t(key);
+    let val = t(key);
     if (val) {
+      if (typeof val === 'string') {
+        val = val
+          .replace(/&amp;/g, '&')
+          .replace(/&le;/g, '≤')
+          .replace(/&ge;/g, '≥')
+          .replace(/&copy;/g, '©');
+      }
       if (val.includes('<') && val.includes('>')) {
         el.innerHTML = val;
       } else {

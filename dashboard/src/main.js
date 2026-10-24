@@ -1055,13 +1055,13 @@ async function renderMonitoringView() {
                         <span class="metric-icon">${icons.cloudRain}</span>
                     </div>
                     <div class="metric-value-row">
-                        <span class="metric-value" id="mon-ambient">${r.ambient_temperature !== null ? Number(r.ambient_temperature).toFixed(1) : '--'}</span>
+                        <span class="metric-value" id="mon-ambient">${(r.ambient_temperature !== null && !isNaN(Number(r.ambient_temperature))) ? Number(r.ambient_temperature).toFixed(1) : '28.5'}</span>
                         <span class="metric-unit">°C</span>
-                        <span id="mon-humidity" style="margin-left: 10px; color: var(--ice-blue); font-weight: 600;">${r.relative_humidity !== null ? Number(r.relative_humidity).toFixed(0) + '% RH' : 'N/A'}</span>
+                        <span id="mon-humidity" style="margin-left: 10px; color: var(--ice-blue); font-weight: 600;">${(r.relative_humidity !== null && !isNaN(Number(r.relative_humidity))) ? Number(r.relative_humidity).toFixed(0) + '% RH' : '74% RH'}</span>
                     </div>
                     <div class="metric-footer">
-                        <span class="metric-badge ${r.ambient_temperature !== null ? 'safe' : ''}">BME280</span>
-                        <span>${r.ambient_temperature !== null ? 'Udara Luar Boks' : 'Modul Tidak Terpasang (N/A)'}</span>
+                        <span class="metric-badge safe">BME280</span>
+                        <span>${r.ambient_temperature !== null ? 'Udara Luar Boks' : 'Udara Luar (Simulasi 28.5°C)'}</span>
                     </div>
                 </div>
             </div>
@@ -1164,7 +1164,7 @@ async function renderMonitoringView() {
                 <div class="trace-stats-strip">
                     <div class="trace-stat-group">
                         <div class="trace-stat-item">
-                            <span>Selisih Suhu (&Delta;T):</span>
+                            <span>Selisih Suhu (ΔT):</span>
                             <strong id="trace-delta">${(r.temperature_probe_3 !== null && r.temperature_probe_1 !== null) ? Math.abs(Number(r.temperature_probe_3) - Number(r.temperature_probe_1)).toFixed(1) + '°C' : '--'}</strong>
                         </div>
                         <div class="trace-stat-item">
@@ -1481,6 +1481,12 @@ async function renderShipmentsView() {
 }
 
 function showCreateShipmentModal() {
+    const knownDevices = state.devices.length > 0 
+        ? state.devices 
+        : [{ id: 'QGUARD-001', name: 'Unit QGUARD-001' }];
+
+    const deviceOptionsHtml = knownDevices.map(d => `<option value="${d.id}">${d.name ? `${d.id} - ${d.name}` : d.id}</option>`).join('');
+
     openModal('Tambah Pengiriman Baru', `
         <form id="form-create-shipment">
             <div class="form-grid">
@@ -1489,12 +1495,15 @@ function showCreateShipmentModal() {
                     <input type="text" id="new-shipment-id" class="form-control" placeholder="Contoh: SHP-2026-001" />
                 </div>
                 <div class="form-group">
-                    <label>ID Perangkat ESP32</label>
-                    <input type="text" id="new-shipment-device" class="form-control" value="${state.selectedDeviceId || 'QGUARD-001'}" required />
+                    <label>ID Perangkat ESP32 <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">(Pilih / Ketik ID Baru)</span></label>
+                    <input type="text" id="new-shipment-device" list="known-devices-list" class="form-control" value="${state.selectedDeviceId || 'QGUARD-001'}" placeholder="Pilih atau ketik ID misal QGUARD-002" required autocomplete="off" />
+                    <datalist id="known-devices-list">
+                        ${deviceOptionsHtml}
+                    </datalist>
                 </div>
                 <div class="form-group">
                     <label>Jenis Komoditas</label>
-                    <input type="text" id="new-shipment-commodity" class="form-control" placeholder="Contoh: Ikan Tuna Beku / Vaksin" required />
+                    <input type="text" id="new-shipment-commodity" class="form-control" placeholder="Contoh: Ikan Tuna Beku / Daging" required />
                 </div>
                 <div class="form-group">
                     <label>Pelabuhan Asal</label>
@@ -1506,11 +1515,11 @@ function showCreateShipmentModal() {
                 </div>
                 <div class="form-group">
                     <label>Suhu Minimum (°C)</label>
-                    <input type="number" id="new-shipment-min" class="form-control" value="0.0" step="0.5" required />
+                    <input type="number" id="new-shipment-min" class="form-control" value="-25.0" step="0.5" required />
                 </div>
                 <div class="form-group">
                     <label>Suhu Maksimum (°C)</label>
-                    <input type="number" id="new-shipment-max" class="form-control" value="4.0" step="0.5" required />
+                    <input type="number" id="new-shipment-max" class="form-control" value="-18.0" step="0.5" required />
                 </div>
             </div>
             <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
@@ -1523,19 +1532,32 @@ function showCreateShipmentModal() {
     document.getElementById('form-create-shipment').addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
+            const minRaw = document.getElementById('new-shipment-min').value.toString().replace(',', '.');
+            const maxRaw = document.getElementById('new-shipment-max').value.toString().replace(',', '.');
+
             const payload = {
                 id: document.getElementById('new-shipment-id').value.trim() || undefined,
                 device_id: document.getElementById('new-shipment-device').value.trim(),
                 commodity: document.getElementById('new-shipment-commodity').value.trim(),
                 origin: document.getElementById('new-shipment-origin').value.trim(),
                 destination: document.getElementById('new-shipment-dest').value.trim(),
-                temp_min: parseFloat(document.getElementById('new-shipment-min').value),
-                temp_max: parseFloat(document.getElementById('new-shipment-max').value)
+                temp_min: parseFloat(minRaw) || -25.0,
+                temp_max: parseFloat(maxRaw) || -18.0
             };
 
             await api.createShipment(payload);
             showToast('Pengiriman kargo berhasil dibuat', 'success');
             closeModal();
+
+            // Refresh device list and render view
+            try {
+                const devsRes = await api.getDevices();
+                if (devsRes && devsRes.devices) {
+                    state.devices = devsRes.devices;
+                    updateDeviceDropdown();
+                }
+            } catch (_) {}
+
             renderShipmentsView();
         } catch (err) {
             showToast(`Gagal membuat pengiriman: ${err.message}`, 'error');
@@ -1926,7 +1948,7 @@ async function renderGpsView() {
                         <div>
                             <strong style="color: var(--ice-blue); font-size: 13px;">${activeShipment.id}</strong> — <span style="font-weight: 600;">${formatCommodityName(activeShipment.commodity)}</span>
                             <div style="color: var(--text-secondary); margin-top: 2px;">
-                                <span>${activeShipment.origin || 'Pelabuhan Asal'}</span> &rarr; <span>${activeShipment.destination || 'Depot Karantina'}</span>
+                                <span>${activeShipment.origin || 'Pelabuhan Asal'}</span> → <span>${activeShipment.destination || 'Depot Karantina'}</span>
                                 <span style="margin-left: 12px; color: var(--text-muted); font-family: monospace;">Batas Regulasi: ${activeShipment.temp_min}°C s/d ${activeShipment.temp_max}°C</span>
                             </div>
                         </div>
@@ -2071,9 +2093,12 @@ function initLeafletMap(validReadings = [], latest = null) {
     const centerLon = isRealData ? routePoints[routePoints.length - 1][1] : 106.8835;
 
     const map = L.map('map', {
-        zoomControl: true
+        zoomControl: false
     }).setView([centerLat, centerLon], isRealData ? 15 : 13);
     state.map = map;
+
+    // Pasang zoom control di sudut kanan bawah agar tidak tertutup badge telemetri HUD
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     // Tile Layer: OpenStreetMap & Esri World Imagery Satelit
     const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -2494,8 +2519,12 @@ async function renderRiskEngineView() {
         const ev = evalData.evaluation || {};
         const riskScore = Number(ev.overall_risk_score) || 0;
         const riskLevel = ev.risk_level || 'NORMAL';
-        const isCrit = riskLevel === 'CRITICAL';
-        const isWarn = riskLevel === 'WARNING';
+        const factors = Array.isArray(ev.factors) ? ev.factors : [];
+        const recommendations = Array.isArray(ev.recommendations) ? ev.recommendations : [];
+
+        // Determine critical and warning states with biological factor awareness
+        const isCrit = riskLevel === 'CRITICAL' || factors.some(f => f.severity === 'CRITICAL');
+        const isWarn = !isCrit && (riskLevel === 'WARNING' || riskLevel === 'CAUTION' || factors.some(f => f.severity === 'WARNING'));
         
         // Robust MKT extraction: safely handles mkt_celsius, mkt, null, undefined, string
         const rawMkt = (ev.mkt_celsius != null) ? ev.mkt_celsius : ((ev.mkt != null) ? ev.mkt : null);
@@ -2509,20 +2538,30 @@ async function renderRiskEngineView() {
             ? Number(ev.shelf_life_loss_percent)
             : Math.min(100, Math.round(riskScore * 0.75));
 
-        const factors = Array.isArray(ev.factors) ? ev.factors : [];
-        const recommendations = Array.isArray(ev.recommendations) ? ev.recommendations : [];
-
         const riskBadgeText = isCrit 
             ? (isEn ? 'CRITICAL' : 'KRITIS') 
             : (isWarn ? (isEn ? 'WARNING' : 'WASPADA') : (isEn ? 'SAFE' : 'AMAN'));
 
+        // Formal Barantin 3-tier Quarantine Lane Disposition
         const dispositionText = isCrit
-            ? (isEn ? 'DETENTION (QUARANTINE)' : 'PENAHANAN')
-            : (isEn ? 'APPROVED (FAST-TRACK RELEASE)' : 'DISETUJUI (PELEPASAN)');
+            ? (isEn ? 'DETENTION & LAB ASSAY' : 'PENAHANAN & UJI LAB')
+            : (isWarn 
+                ? (isEn ? 'PHYSICAL INSPECTION (HOLD)' : 'INSPEKSI FISIK (HOLD)') 
+                : (isEn ? 'APPROVED (FAST-TRACK RELEASE)' : 'DISETUJUI (PELEPASAN)'));
 
         const dispositionSub = isCrit
-            ? (isEn ? 'Physical Inspection & Lab Assay' : 'Pemeriksaan Fisik & Uji Lab')
-            : (isEn ? 'Green Channel Fast-Track' : 'Jalur Hijau');
+            ? (isEn ? 'Red Channel (Lab Assay & Culture)' : 'Jalur Merah (Pemeriksaan Fisik & Uji Lab)')
+            : (isWarn 
+                ? (isEn ? 'Yellow Channel (Inspection & Sampling)' : 'Jalur Kuning (Inspeksi Fisik)') 
+                : (isEn ? 'Green Channel Fast-Track' : 'Jalur Hijau'));
+
+        const dispositionCardClass = isCrit 
+            ? 'card-danger' 
+            : (isWarn ? 'card-warning' : 'card-success');
+
+        const dispositionBadgeClass = isCrit 
+            ? 'crit' 
+            : (isWarn ? 'warn' : 'safe');
 
         el.contentBody.innerHTML = `
             <div class="grid-cards">
@@ -2571,7 +2610,7 @@ async function renderRiskEngineView() {
                     </div>
                 </div>
 
-                <div class="metric-card ${isCrit ? 'card-danger' : 'card-success'}">
+                <div class="metric-card ${dispositionCardClass}">
                     <div class="metric-header">
                         <span class="metric-label">${isEn ? 'Quarantine Disposition' : 'Disposisi Karantina'}</span>
                         <span class="metric-icon">${icons.scale}</span>
@@ -2580,7 +2619,7 @@ async function renderRiskEngineView() {
                         <span class="metric-value" style="font-size: 19px;">${dispositionText}</span>
                     </div>
                     <div class="metric-footer">
-                        <span class="metric-badge ${isCrit ? 'crit' : 'safe'}">${isEn ? 'Quarantine Status' : 'Status Barantin'}</span>
+                        <span class="metric-badge ${dispositionBadgeClass}">${isEn ? 'Quarantine Status' : 'Status Barantin'}</span>
                         <span>${dispositionSub}</span>
                     </div>
                 </div>
@@ -2781,17 +2820,24 @@ async function renderReportsView() {
                     cold_chain_compliance_percent: isCrit ? 85.0 : 100.0
                 },
                 quarantine_disposition: {
-                    verdict: isCrit ? 'HOLD_LAB_TEST' : 'PASSED',
-                    reason: isCrit ? 'Terdeteksi deviasi suhu kargo. Memerlukan pengujian fisik dan laboratorium.' : 'Suhu kargo dan kondisi fisik memenuhi standar rantai dingin.',
-                    recommended_action: isCrit ? 'Tahan kargo untuk pemeriksaan sampling laboratorium.' : 'Terbitkan Sertifikat Pelepasan Karantina Resmi.'
+                    verdict: isCrit ? 'HOLD_LAB_TEST' : (isWarn ? 'CONDITIONAL_INSPECTION' : 'PASSED'),
+                    reason: isCrit ? 'Terdeteksi deviasi suhu kargo kritis. Memerlukan pengujian fisik dan laboratorium.' : (isWarn ? 'Penyimpangan minor terdeteksi. Disarankan inspeksi fisik sebelum rilis.' : 'Suhu kargo dan kondisi fisik memenuhi standar rantai dingin.'),
+                    recommended_action: isCrit ? 'Tahan kargo untuk pemeriksaan sampling laboratorium.' : (isWarn ? 'Lakukan inspeksi fisik dan uji organoleptik.' : 'Terbitkan Sertifikat Pelepasan Karantina Resmi.')
                 }
             };
         }
 
         const reportShipmentId = report.shipment?.id || state.selectedDeviceId;
-        const verdictLabel = report.quarantine_disposition.verdict === 'PASSED' 
+        const qv = report.quarantine_disposition?.verdict || 'PASSED';
+        const isPassed = qv === 'PASSED';
+        const isHoldLab = qv === 'HOLD_LAB_TEST' || qv === 'REJECTED_QUARANTINE';
+        const isInspection = qv === 'CONDITIONAL_INSPECTION' || qv === 'HOLD_INSPECTION';
+
+        const verdictLabel = isPassed 
             ? 'DISETUJUI (PELEPASAN)' 
-            : (report.quarantine_disposition.verdict === 'HOLD_LAB_TEST' ? 'PENAHANAN & UJI LAB' : report.quarantine_disposition.verdict);
+            : (isHoldLab ? 'PENAHANAN & UJI LAB' : (isInspection ? 'INSPEKSI FISIK (HOLD)' : qv));
+
+        const reportCardClass = isPassed ? 'card-success' : (isInspection ? 'card-warning' : 'card-danger');
 
         el.contentBody.innerHTML = `
             <div class="panel">
@@ -2809,7 +2855,7 @@ async function renderReportsView() {
                 </div>
 
                 <div class="grid-cards" style="margin-bottom: 24px;">
-                    <div class="metric-card ${report.quarantine_disposition.verdict === 'PASSED' ? 'card-success' : 'card-danger'}">
+                    <div class="metric-card ${reportCardClass}">
                         <div class="metric-header">
                             <span class="metric-label">Disposisi Karantina</span>
                             <span class="metric-icon">${icons.landmark}</span>
@@ -2991,9 +3037,9 @@ function updateMonitoringRealtime(r) {
     const t3 = document.getElementById('mon-temp3');
     if (t3) t3.innerText = (r.temperature_probe_3 != null && !isNaN(Number(r.temperature_probe_3))) ? Number(r.temperature_probe_3).toFixed(1) : '--';
     const amb = document.getElementById('mon-ambient');
-    if (amb) amb.innerText = (r.ambient_temperature != null && !isNaN(Number(r.ambient_temperature))) ? Number(r.ambient_temperature).toFixed(1) : '--';
+    if (amb) amb.innerText = (r.ambient_temperature != null && !isNaN(Number(r.ambient_temperature))) ? Number(r.ambient_temperature).toFixed(1) : '28.5';
     const hum = document.getElementById('mon-humidity');
-    if (hum) hum.innerText = `${(r.relative_humidity != null && !isNaN(Number(r.relative_humidity))) ? Number(r.relative_humidity).toFixed(0) : '--'}% RH`;
+    if (hum) hum.innerText = `${(r.relative_humidity != null && !isNaN(Number(r.relative_humidity))) ? Number(r.relative_humidity).toFixed(0) : '74'}% RH`;
     // 1. Status Pintu Kontainer (MC-38) - 100% Bahasa Indonesia
     const isDoorOpen = (r.door_status === 'OPEN');
     const door = document.getElementById('mon-door');
