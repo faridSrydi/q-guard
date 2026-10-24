@@ -145,6 +145,14 @@ int tftSleepMinutes = 2; // Pilihan waktu tidur layar: 1, 2, 3, 5, 10, atau 0 (O
 unsigned long lastUserInteractionTime = 0; // Waktu terakhir ada interaksi pengguna (tombol/sentuh)
 bool tftIsAsleep = false; // Status apakah layar sedang dalam mode tidur hemat energi
 
+// Konfigurasi Bahasa Tampilan Sistem (Language)
+enum AppLanguage {
+  LANG_ID, // Bahasa Indonesia (Default)
+  LANG_EN  // English
+};
+
+AppLanguage appLang = LANG_ID; // Default: Bahasa Indonesia
+
 // Data Telemetri Terkini
 struct TelemetryData {
   float temp1;            // Probe T1 (Inti Komoditas / Daging Ikan)
@@ -911,6 +919,12 @@ void loadWifiPreferences() {
   float cMin = preferences.getFloat("c_min", -999.0f);
   float cMax = preferences.getFloat("c_max", -999.0f);
   tftSleepMinutes = preferences.getInt("sleep_min", 2);
+  String savedLang = preferences.getString("lang", "id");
+  if (savedLang == "en") {
+    appLang = LANG_EN;
+  } else {
+    appLang = LANG_ID;
+  }
   preferences.end();
 
   if (cMin > -100.0f && cMax > -100.0f) {
@@ -928,6 +942,7 @@ void loadWifiPreferences() {
   Serial.printf("  Server  : %s\n", serverUrl.c_str());
   Serial.printf("  Device  : %s\n", deviceId.c_str());
   Serial.printf("  AutoSleep: %d Menit%s\n", tftSleepMinutes, tftSleepMinutes == 0 ? " (Always ON)" : "");
+  Serial.printf("  Bahasa  : %s\n", appLang == LANG_EN ? "English (EN)" : "Bahasa Indonesia (ID) [Default]");
   Serial.printf("  Profil  : %s (%.1fC s/d %.1fC)\n", 
                 currentProfile == PROFILE_FISH_FRESH ? "IKAN SEGAR" : (currentProfile == PROFILE_VACCINE_PHARMA ? "VAKSIN" : "BEKU -20C"),
                 thresholdMin, thresholdMax);
@@ -1296,7 +1311,7 @@ void drawMainMonitorScreen() {
   tft.setTextColor(COLOR_GOLD);
   tft.setTextSize(1);
   tft.setCursor(14, cardY + 8);
-  tft.print("T1 (PROBE INTI)");
+  tft.print(appLang == LANG_EN ? "T1 (CORE PROBE)" : "T1 (PROBE INTI)");
 
   tft.setTextColor(COLOR_CYAN);
   tft.setCursor(118, cardY + 8);
@@ -1304,16 +1319,16 @@ void drawMainMonitorScreen() {
 
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(232, cardY + 8);
-  tft.print("T3 (PINTU)");
+  tft.print(appLang == LANG_EN ? "T3 (DOOR)" : "T3 (PINTU)");
 
   tft.drawLine(14, cardY + 54, 300, cardY + 54, COLOR_CARD_BORDER);
   tft.setTextColor(COLOR_CYAN);
   tft.setCursor(18, cardY + 60);
-  tft.print("Suhu MKT:");
+  tft.print(appLang == LANG_EN ? "MKT Temp:" : "Suhu MKT:");
 
   tft.setCursor(180, cardY + 60);
   tft.setTextColor(COLOR_GRAY_TEXT);
-  tft.print("Pintu:");
+  tft.print(appLang == LANG_EN ? "Door:" : "Pintu:");
 
   // --- KOTAK 2: KONDISI FISIK & LINGKUNGAN (BME280 & MPU6050) ---
   int envY = 115;
@@ -1322,13 +1337,13 @@ void drawMainMonitorScreen() {
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setTextSize(1);
   tft.setCursor(16, envY + 8);
-  tft.print("SUHU RUANG LUAR");
+  tft.print(appLang == LANG_EN ? "AMBIENT TEMP" : "SUHU RUANG LUAR");
 
   tft.fillRoundRect(164, envY, 148, 52, 6, COLOR_CARD);
   tft.drawRoundRect(164, envY, 148, 52, 6, COLOR_CARD_BORDER);
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(172, envY + 8);
-  tft.print("GUNCANGAN");
+  tft.print(appLang == LANG_EN ? "SHOCK / G-FORCE" : "GUNCANGAN");
 
   // --- KOTAK 3: AI RISK BADGE ---
   int aiY = 172;
@@ -1337,7 +1352,7 @@ void drawMainMonitorScreen() {
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setTextSize(1);
   tft.setCursor(16, aiY + 8);
-  tft.print("STATUS RISIKO KARANTINA");
+  tft.print(appLang == LANG_EN ? "QUARANTINE RISK STATUS" : "STATUS RISIKO KARANTINA");
 
   // --- TOMBOL SENTUH INTERAKTIF: [ MENU ] ---
   int btnX = 226;
@@ -1352,7 +1367,7 @@ void drawMainMonitorScreen() {
   tft.print("MENU");
   tft.setTextSize(1);
   tft.setCursor(btnX + 18, btnY + 38);
-  tft.print("[PILIH]");
+  tft.print(appLang == LANG_EN ? "[OPEN]" : "[PILIH]");
 
   // Gambar angka dan nilai awal langsung tanpa nunggu 1 detik
   updateMainMonitorData();
@@ -1487,10 +1502,10 @@ void updateMainMonitorData() {
   tft.setCursor(220, cardY + 60);
   if (telemetry.doorOpen) {
     tft.setTextColor(COLOR_RED_ALERT);
-    tft.print("TERBUKA");
+    tft.print(appLang == LANG_EN ? "OPEN" : "TERBUKA");
   } else {
     tft.setTextColor(COLOR_GREEN_SAFE);
-    tft.print("TERTUTUP");
+    tft.print(appLang == LANG_EN ? "CLOSED" : "TERTUTUP");
   }
 
   // 8. BME280 Lingkungan Luar (Data Fisik atau Mode Dummy)
@@ -1499,11 +1514,11 @@ void updateMainMonitorData() {
   tft.setTextSize(1);
   tft.setTextColor(COLOR_WHITE);
   tft.setCursor(16, envY + 22);
-  tft.print("Suhu: "); 
+  tft.print(appLang == LANG_EN ? "Temp: " : "Suhu: "); 
   tft.print(!isnan(telemetry.ambientTemp) ? telemetry.ambientTemp : 28.5f, 1); 
   tft.print(" C");
   tft.setCursor(16, envY + 36);
-  tft.print("Lembap: "); 
+  tft.print(appLang == LANG_EN ? "Hum : " : "Lembap: "); 
   tft.print(!isnan(telemetry.ambientHum) ? (int)telemetry.ambientHum : 74); 
   tft.print("% RH");
 
@@ -1513,7 +1528,7 @@ void updateMainMonitorData() {
   tft.setTextSize(2);
   if (telemetry.gForce > 2.0) {
     tft.setTextColor(COLOR_RED_ALERT);
-    tft.print("BENTURAN");
+    tft.print(appLang == LANG_EN ? "IMPACT" : "BENTURAN");
   } else {
     tft.setTextColor(COLOR_GREEN_SAFE);
     tft.print(telemetry.gForce, 2);
@@ -1533,18 +1548,18 @@ void updateMainMonitorData() {
   tft.setTextSize(2);
   tft.setTextColor(riskBadgeColor);
   tft.setCursor(16, aiY + 24);
-  tft.print("SKOR: ");
+  tft.print(appLang == LANG_EN ? "SCORE: " : "SKOR: ");
   tft.print(telemetry.riskScore);
   tft.print("/100");
 
   tft.setTextSize(1);
   tft.setCursor(16, aiY + 44);
   if (strcmp(telemetry.riskLevel, "CRITICAL") == 0) {
-    tft.print("JALUR MERAH: TAHAN / LAB");
+    tft.print(appLang == LANG_EN ? "RED LANE: HOLD / LAB TEST" : "JALUR MERAH: TAHAN / LAB");
   } else if (strcmp(telemetry.riskLevel, "WARNING") == 0) {
-    tft.print("JALUR KUNING: PERIKSA FISIK");
+    tft.print(appLang == LANG_EN ? "YELLOW LANE: PHYSICAL INSPECT" : "JALUR KUNING: PERIKSA FISIK");
   } else {
-    tft.print("JALUR HIJAU: LOLOS (AMAN)");
+    tft.print(appLang == LANG_EN ? "GREEN LANE: RELEASE (SAFE)" : "JALUR HIJAU: LOLOS (AMAN)");
   }
 }
 
@@ -1560,9 +1575,9 @@ void drawMenuScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(2);
   tft.setCursor(12, 6);
-  tft.print("MENU UTAMA");
+  tft.print(appLang == LANG_EN ? "MAIN MENU" : "MENU UTAMA");
 
-  const char* menuItems[] = {
+  const char* menuItemsID[] = {
     "1. Monitor Suhu Real-Time",
     "2. Profil Komoditas",
     "3. Grafik Riwayat Suhu",
@@ -1570,6 +1585,16 @@ void drawMenuScreen() {
     "5. Status Memori MicroSD",
     "6. Pengaturan Wi-Fi & Cloud",
     "7. Pengaturan Sistem (Setting)"
+  };
+
+  const char* menuItemsEN[] = {
+    "1. Real-Time Temp Monitor",
+    "2. Commodity Profile",
+    "3. Temp History Graph",
+    "4. Quarantine Dossier Report",
+    "5. MicroSD Memory Status",
+    "6. Wi-Fi & Cloud Setup",
+    "7. System Settings"
   };
 
   int startY = 29;
@@ -1591,11 +1616,11 @@ void drawMenuScreen() {
 
     tft.setTextSize(1);
     tft.setCursor(18, itemY + 7);
-    tft.print(menuItems[i]);
+    tft.print(appLang == LANG_EN ? menuItemsEN[i] : menuItemsID[i]);
 
     if (isSelected) {
-      tft.setCursor(248, itemY + 7);
-      tft.print("[PILIH]");
+      tft.setCursor(244, itemY + 7);
+      tft.print(appLang == LANG_EN ? "[SELECT]" : "[PILIH]");
     }
   }
 
@@ -1604,7 +1629,7 @@ void drawMenuScreen() {
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setTextSize(1);
   tft.setCursor(12, 224);
-  tft.print("SELECT: Geser  |  CONFIRM / Sentuh: Buka");
+  tft.print(appLang == LANG_EN ? "SELECT: Next  |  CONFIRM / Touch: Open" : "SELECT: Geser  |  CONFIRM / Sentuh: Buka");
 }
 
 // ============================================================================
@@ -1617,12 +1642,18 @@ void drawProfileSelectScreen() {
   tft.setTextColor(COLOR_GOLD);
   tft.setTextSize(2);
   tft.setCursor(12, 7);
-  tft.print("PROFIL KOMODITAS");
+  tft.print(appLang == LANG_EN ? "COMMODITY PROFILE" : "PROFIL KOMODITAS");
 
-  const char* profiles[] = {
+  const char* profilesID[] = {
     "1. Ikan Segar (0.0 s/d 4.0 C)",
     "2. Vaksin / Farmasi (2.0 s/d 8.0 C)",
     "3. Komoditas Beku (-25 s/d -18 C)"
+  };
+
+  const char* profilesEN[] = {
+    "1. Fresh Fish (0.0 to 4.0 C)",
+    "2. Vaccine / Pharma (2.0 to 8.0 C)",
+    "3. Frozen Cargo (-25 to -18 C)"
   };
 
   int startY = 46;
@@ -1638,18 +1669,18 @@ void drawProfileSelectScreen() {
     tft.setTextColor(isCurrent ? COLOR_GREEN_SAFE : COLOR_WHITE);
     tft.setTextSize(1);
     tft.setCursor(20, itemY + 14);
-    tft.print(profiles[i]);
+    tft.print(appLang == LANG_EN ? profilesEN[i] : profilesID[i]);
 
     if (isCurrent) {
       tft.setCursor(240, itemY + 14);
-      tft.print("[AKTIF]");
+      tft.print(appLang == LANG_EN ? "[ACTIVE]" : "[AKTIF]");
     }
   }
 
   tft.fillRect(0, 218, 320, 22, COLOR_NAV_BAR);
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(12, 224);
-  tft.print("Tekan [CONFIRM] atau sentuh untuk menyimpan");
+  tft.print(appLang == LANG_EN ? "SELECT: Next  |  CONFIRM / Touch: Save" : "SELECT: Geser  |  CONFIRM / Sentuh: Simpan");
 }
 
 // ============================================================================
@@ -1662,7 +1693,7 @@ void drawGraphScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(1);
   tft.setCursor(10, 9);
-  tft.print("GRAFIK RIWAYAT SUHU (T1)");
+  tft.print(appLang == LANG_EN ? "TEMP HISTORY GRAPH (T1)" : "GRAFIK RIWAYAT SUHU (T1)");
 
   int originX = 35;
   int originY = 195;
@@ -1729,7 +1760,7 @@ void drawGraphScreen() {
   tft.fillRect(0, 215, 320, 25, COLOR_NAV_BAR);
   tft.setTextColor(COLOR_CYAN);
   tft.setCursor(20, 222);
-  tft.print("< Tekan [BACK] untuk kembali");
+  tft.print(appLang == LANG_EN ? "< Press [BACK] to return" : "< Tekan [BACK] untuk kembali");
 }
 
 // ============================================================================
@@ -1744,7 +1775,7 @@ void drawDossierScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(1);
   tft.setCursor(8, 9);
-  tft.print("LAPORAN AUDIT PENGIRIMAN");
+  tft.print(appLang == LANG_EN ? "TRIP AUDIT REPORT" : "LAPORAN AUDIT PENGIRIMAN");
 
   // Profil Komoditas aktif di kanan atas
   tft.setCursor(185, 9);
@@ -1769,23 +1800,23 @@ void drawDossierScreen() {
 
   // Tentukan Keputusan / Disposisi Jalur Karantina
   uint16_t verdictColor = COLOR_GREEN_SAFE;
-  const char* verdictLabel = "JALUR HIJAU (LOLOS)";
-  const char* verdictDesc = "Suhu stabil memenuhi standar karantina";
+  const char* verdictLabel = appLang == LANG_EN ? "GREEN LANE (PASS)" : "JALUR HIJAU (LOLOS)";
+  const char* verdictDesc = appLang == LANG_EN ? "Temp stable, quarantine compliant" : "Suhu stabil memenuhi standar karantina";
 
   if (tripMetrics.hasData) {
     if (tripMetrics.maxTemp > thresholdMax + 4.0f || compRate < 80.0f) {
       verdictColor = COLOR_RED_ALERT;
-      verdictLabel = "JALUR MERAH (TAHAN / LAB)";
-      verdictDesc = "Terjadi deviasi kritis, tahan dan uji lab";
+      verdictLabel = appLang == LANG_EN ? "RED LANE (HOLD / LAB)" : "JALUR MERAH (TAHAN / LAB)";
+      verdictDesc = appLang == LANG_EN ? "Critical excursion, hold & test lab" : "Terjadi deviasi kritis, tahan dan uji lab";
     } else if (compRate < 95.0f || tripMetrics.excursionCount > 0 || tripMetrics.doorBreachCount > 3 || tripMetrics.peakShockG > 2.0f) {
       verdictColor = COLOR_GOLD;
-      verdictLabel = "JALUR KUNING (PERIKSA FISIK)";
-      verdictDesc = "Anomali terdeteksi, periksa kondisi fisik";
+      verdictLabel = appLang == LANG_EN ? "YELLOW LANE (INSPECT)" : "JALUR KUNING (PERIKSA FISIK)";
+      verdictDesc = appLang == LANG_EN ? "Anomaly detected, inspect cargo" : "Anomali terdeteksi, periksa kondisi fisik";
     }
   } else {
     verdictColor = COLOR_CYAN;
-    verdictLabel = "MENUNGGU DATA PENGIRIMAN...";
-    verdictDesc = "Menghimpun riwayat sensor fisik...";
+    verdictLabel = appLang == LANG_EN ? "WAITING FOR TRIP DATA..." : "MENUNGGU DATA PENGIRIMAN...";
+    verdictDesc = appLang == LANG_EN ? "Gathering sensor history..." : "Menghimpun riwayat sensor fisik...";
   }
 
   // 3. Card Keputusan Disposisi Karantina (Triage Banner)
@@ -1796,7 +1827,7 @@ void drawDossierScreen() {
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setTextSize(1);
   tft.setCursor(14, cardY + 6);
-  tft.print("STATUS DISPOSISI:");
+  tft.print(appLang == LANG_EN ? "DISPOSITION STATUS:" : "STATUS DISPOSISI:");
 
   tft.setTextSize(2);
   tft.setTextColor(verdictColor);
@@ -1820,12 +1851,12 @@ void drawDossierScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(1);
   tft.setCursor(14, colY + 6);
-  tft.print("SUHU PROBE INTI (T1)");
+  tft.print(appLang == LANG_EN ? "CORE TEMP STATS (T1)" : "SUHU PROBE INTI (T1)");
   tft.drawLine(14, colY + 16, 148, colY + 16, COLOR_CARD_BORDER);
 
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(14, colY + 22);
-  tft.print("Suhu Min   : ");
+  tft.print(appLang == LANG_EN ? "Min Temp   : " : "Suhu Min   : ");
   tft.setTextColor(COLOR_WHITE);
   if (tripMetrics.hasData && tripMetrics.minTemp < 900.0f) {
     tft.printf("%.1f C", tripMetrics.minTemp);
@@ -1835,7 +1866,7 @@ void drawDossierScreen() {
 
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(14, colY + 38);
-  tft.print("Suhu Max   : ");
+  tft.print(appLang == LANG_EN ? "Max Temp   : " : "Suhu Max   : ");
   if (tripMetrics.hasData && tripMetrics.maxTemp > -900.0f) {
     tft.setTextColor(tripMetrics.maxTemp > thresholdMax ? COLOR_RED_ALERT : COLOR_WHITE);
     tft.printf("%.1f C", tripMetrics.maxTemp);
@@ -1846,7 +1877,7 @@ void drawDossierScreen() {
 
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(14, colY + 54);
-  tft.print("Rata-Rata  : ");
+  tft.print(appLang == LANG_EN ? "Average    : " : "Rata-Rata  : ");
   tft.setTextColor(COLOR_WHITE);
   if (tripMetrics.hasData) {
     tft.printf("%.1f C", avgTemp);
@@ -1856,13 +1887,13 @@ void drawDossierScreen() {
 
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(14, colY + 70);
-  tft.print("Batas Suhu : ");
+  tft.print(appLang == LANG_EN ? "Limits     : " : "Batas Suhu : ");
   tft.setTextColor(COLOR_GOLD);
   tft.printf("%.0f..%.0f C", thresholdMin, thresholdMax);
 
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(14, colY + 86);
-  tft.print("Kepatuhan  : ");
+  tft.print(appLang == LANG_EN ? "Compliance : " : "Kepatuhan  : ");
   tft.setTextColor(compRate >= 95.0f ? COLOR_GREEN_SAFE : (compRate >= 80.0f ? COLOR_GOLD : COLOR_RED_ALERT));
   tft.printf("%.1f%%", compRate);
 
@@ -1873,30 +1904,30 @@ void drawDossierScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(1);
   tft.setCursor(170, colY + 6);
-  tft.print("CATATAN ANOMALI");
+  tft.print(appLang == LANG_EN ? "ANOMALY RECORDS" : "CATATAN ANOMALI");
   tft.drawLine(170, colY + 16, 304, colY + 16, COLOR_CARD_BORDER);
 
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(170, colY + 22);
-  tft.print("Deviasi Suhu: ");
+  tft.print(appLang == LANG_EN ? "Temp Excurs : " : "Deviasi Suhu: ");
   tft.setTextColor(tripMetrics.excursionCount > 0 ? COLOR_RED_ALERT : COLOR_GREEN_SAFE);
   tft.printf("%d x", tripMetrics.excursionCount);
 
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(170, colY + 38);
-  tft.print("Durasi Dev  : ");
+  tft.print(appLang == LANG_EN ? "Exc Duration: " : "Durasi Dev  : ");
   tft.setTextColor(tripMetrics.totalExcursionSec > 0 ? COLOR_RED_ALERT : COLOR_WHITE);
-  tft.printf("%lu dtk", tripMetrics.totalExcursionSec);
+  tft.printf(appLang == LANG_EN ? "%lu sec" : "%lu dtk", tripMetrics.totalExcursionSec);
 
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(170, colY + 54);
-  tft.print("Buka Pintu  : ");
+  tft.print(appLang == LANG_EN ? "Door Breach : " : "Buka Pintu  : ");
   tft.setTextColor(tripMetrics.doorBreachCount > 0 ? COLOR_GOLD : COLOR_WHITE);
   tft.printf("%d x (%lus)", tripMetrics.doorBreachCount, telemetry.doorTotalOpenSec);
 
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(170, colY + 70);
-  tft.print("Puncak Shock: ");
+  tft.print(appLang == LANG_EN ? "Peak Shock  : " : "Puncak Shock: ");
   tft.setTextColor(tripMetrics.peakShockG > 2.0f ? COLOR_RED_ALERT : COLOR_GREEN_SAFE);
   tft.printf("%.2f g", tripMetrics.peakShockG);
 
@@ -1907,7 +1938,7 @@ void drawDossierScreen() {
 
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(170, colY + 86);
-  tft.print("Durasi Trip : ");
+  tft.print(appLang == LANG_EN ? "Trip Time   : " : "Durasi Trip : ");
   tft.setTextColor(COLOR_WHITE);
   tft.printf("%02lu:%02lu:%02lu", hrs, mins, secs);
 
@@ -1918,21 +1949,21 @@ void drawDossierScreen() {
   tft.setTextColor(COLOR_WHITE);
   tft.setTextSize(1);
   tft.setCursor(14, 196);
-  tft.print("[ RESET DATA TRIP ]");
+  tft.print(appLang == LANG_EN ? "[ RESET TRIP DATA ]" : "[ RESET DATA TRIP ]");
 
   // Tombol 2: [ KEMBALI KE MENU ] (Kanan)
   tft.fillRoundRect(164, 188, 148, 26, 6, COLOR_CARD);
   tft.drawRoundRect(164, 188, 148, 26, 6, COLOR_CYAN);
   tft.setTextColor(COLOR_CYAN);
   tft.setCursor(182, 196);
-  tft.print("< KEMBALI KE MENU");
+  tft.print(appLang == LANG_EN ? "< BACK TO MENU" : "< KEMBALI KE MENU");
 
   // 6. Footer (Y: 218 to 240)
   tft.fillRect(0, 218, 320, 22, COLOR_NAV_BAR);
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setTextSize(1);
   tft.setCursor(10, 224);
-  tft.print("[CONFIRM]: Reset Data  |  [BACK]: Menu");
+  tft.print(appLang == LANG_EN ? "[CONFIRM]: Reset Data  |  [BACK]: Menu" : "[CONFIRM]: Reset Data  |  [BACK]: Menu");
 }
 
 // ============================================================================
@@ -1945,7 +1976,7 @@ void drawSdInfoScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(2);
   tft.setCursor(12, 6);
-  tft.print("STATUS MEMORI MICROSD");
+  tft.print(appLang == LANG_EN ? "MICROSD STATUS" : "STATUS MEMORI MICROSD");
 
   tft.fillRoundRect(10, 40, 300, 160, 6, COLOR_CARD);
   tft.drawRoundRect(10, 40, 300, 160, 6, COLOR_CARD_BORDER);
@@ -1953,37 +1984,37 @@ void drawSdInfoScreen() {
   tft.setTextColor(COLOR_WHITE);
   tft.setTextSize(1);
   tft.setCursor(25, 60);
-  tft.print("Status Kartu SD  : ");
+  tft.print(appLang == LANG_EN ? "SD Card Status   : " : "Status Kartu SD  : ");
   if (sdAvailable) {
     tft.setTextColor(COLOR_GREEN_SAFE);
-    tft.print("TERHUBUNG (FAT32)");
+    tft.print(appLang == LANG_EN ? "CONNECTED (FAT32)" : "TERHUBUNG (FAT32)");
   } else {
     tft.setTextColor(COLOR_RED_ALERT);
-    tft.print("TIDAK TERPASANG");
+    tft.print(appLang == LANG_EN ? "NOT INSERTED" : "TIDAK TERPASANG");
   }
 
   tft.setTextColor(COLOR_WHITE);
   tft.setCursor(25, 85);
-  tft.print("Format File Log  : /qguard_log.csv");
+  tft.print(appLang == LANG_EN ? "Log File Format  : /qguard_log.csv" : "Format File Log  : /qguard_log.csv");
 
   tft.setCursor(25, 110);
-  tft.print("Jumlah Baris Log : ");
+  tft.print(appLang == LANG_EN ? "Total Log Lines  : " : "Jumlah Baris Log : ");
   tft.setTextColor(COLOR_GOLD);
   tft.print(telemetry.logCount);
-  tft.print(" baris");
+  tft.print(appLang == LANG_EN ? " lines" : " baris");
 
   tft.setTextColor(COLOR_WHITE);
   tft.setCursor(25, 135);
-  tft.print("Periode Simpan   : 5 Detik");
+  tft.print(appLang == LANG_EN ? "Save Interval    : 5 Seconds" : "Periode Simpan   : 5 Detik");
 
   tft.setCursor(25, 160);
   tft.setTextColor(COLOR_CYAN);
-  tft.print("Pencatatan Data  : AKTIF (OTOMATIS)");
+  tft.print(appLang == LANG_EN ? "Data Logging     : ACTIVE (AUTO)" : "Pencatatan Data  : AKTIF (OTOMATIS)");
 
   tft.fillRect(0, 215, 320, 25, COLOR_NAV_BAR);
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(20, 222);
-  tft.print("< Tekan [BACK] untuk kembali");
+  tft.print(appLang == LANG_EN ? "< Press [BACK] to return" : "< Tekan [BACK] untuk kembali");
 }
 
 // ============================================================================
@@ -2037,7 +2068,7 @@ void drawWifiConfigScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(2);
   tft.setCursor(12, 6);
-  tft.print("PENGATURAN WI-FI");
+  tft.print(appLang == LANG_EN ? "WI-FI & CLOUD SETUP" : "PENGATURAN WI-FI");
 
   tft.fillRoundRect(8, 34, 304, 175, 6, COLOR_CARD);
   tft.drawRoundRect(8, 34, 304, 175, 6, COLOR_CARD_BORDER);
@@ -2045,7 +2076,7 @@ void drawWifiConfigScreen() {
   tft.setTextSize(1);
   tft.setCursor(16, 42);
   tft.setTextColor(COLOR_GOLD);
-  tft.print("STATUS KONEKSI:");
+  tft.print(appLang == LANG_EN ? "CONNECTION STATUS:" : "STATUS KONEKSI:");
 
   tft.setCursor(16, 54);
   if (wifiState == WIFI_STATE_CONNECTED) {
@@ -2061,7 +2092,7 @@ void drawWifiConfigScreen() {
   } else if (wifiState == WIFI_STATE_PORTAL) {
     tft.setTextColor(COLOR_CYAN);
     tft.setTextSize(2);
-    tft.print("HOTSPOT AKTIF");
+    tft.print(appLang == LANG_EN ? "HOTSPOT ACTIVE" : "HOTSPOT AKTIF");
     tft.setTextSize(1);
     tft.setTextColor(COLOR_WHITE);
     tft.setCursor(16, 76);
@@ -2073,7 +2104,7 @@ void drawWifiConfigScreen() {
   } else {
     tft.setTextColor(COLOR_GOLD);
     tft.setTextSize(2);
-    tft.print("MENGHUBUNGKAN..");
+    tft.print(appLang == LANG_EN ? "CONNECTING.." : "MENGHUBUNGKAN..");
     tft.setTextSize(1);
     tft.setTextColor(COLOR_WHITE);
     tft.setCursor(16, 76);
@@ -2084,17 +2115,17 @@ void drawWifiConfigScreen() {
 
   tft.setTextColor(COLOR_CYAN);
   tft.setCursor(16, 126);
-  tft.print("PANDUAN KONFIGURASI:");
+  tft.print(appLang == LANG_EN ? "SETUP GUIDE:" : "PANDUAN KONFIGURASI:");
 
   tft.setTextColor(COLOR_WHITE);
   tft.setCursor(16, 140);
-  tft.print("1. Hubungkan ke Wi-Fi:");
+  tft.print(appLang == LANG_EN ? "1. Connect to Wi-Fi:" : "1. Hubungkan ke Wi-Fi:");
   tft.setCursor(16, 152);
   tft.setTextColor(COLOR_GREEN_SAFE);
   tft.print("   SSID: QGUARD-SETUP");
   tft.setTextColor(COLOR_WHITE);
   tft.setCursor(16, 166);
-  tft.print("2. Atau scan QR di samping");
+  tft.print(appLang == LANG_EN ? "2. Or scan QR code" : "2. Atau scan QR di samping");
   tft.setCursor(16, 180);
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.print("Portal: http://192.168.4.1");
@@ -2110,12 +2141,12 @@ void drawWifiConfigScreen() {
   tft.print("SCAN QR CODE");
   tft.setCursor(205, 157);
   tft.setTextColor(COLOR_CYAN);
-  tft.print("Setup via HP");
+  tft.print(appLang == LANG_EN ? "Setup via Phone" : "Setup via HP");
 
   tft.fillRect(0, 215, 320, 25, COLOR_NAV_BAR);
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(12, 222);
-  tft.print("[CONFIRM]: Buka Portal   [BACK]: Menu");
+  tft.print(appLang == LANG_EN ? "[CONFIRM]: Open Portal   [BACK]: Menu" : "[CONFIRM]: Buka Portal   [BACK]: Menu");
 }
 
 // ============================================================================
@@ -2143,30 +2174,57 @@ void drawSettingsScreen() {
   tft.setTextColor(COLOR_CYAN);
   tft.setTextSize(2);
   tft.setCursor(12, 6);
-  tft.print("PENGATURAN SISTEM");
+  tft.print(appLang == LANG_EN ? "SYSTEM SETTINGS" : "PENGATURAN SISTEM");
 
-  // Kartu 1: Auto-Sleep Layar TFT
-  tft.fillRoundRect(8, 33, 304, 86, 6, COLOR_CARD);
-  tft.drawRoundRect(8, 33, 304, 86, 6, COLOR_CARD_BORDER);
+  // Kartu 1: Bahasa Sistem (System Language)
+  tft.fillRoundRect(8, 32, 304, 46, 6, COLOR_CARD);
+  tft.drawRoundRect(8, 32, 304, 46, 6, COLOR_CARD_BORDER);
 
   tft.setTextSize(1);
-  tft.setCursor(16, 39);
+  tft.setCursor(14, 37);
   tft.setTextColor(COLOR_GOLD);
-  tft.print("AUTO-SLEEP LAYAR TFT (HEMAT ENERGI):");
+  tft.print(appLang == LANG_EN ? "SYSTEM LANGUAGE / BAHASA:" : "BAHASA SISTEM / LANGUAGE:");
 
-  tft.setCursor(16, 50);
-  tft.setTextColor(COLOR_GRAY_TEXT);
-  tft.print("Padam otomatis jika tidak ada sentuhan/tombol:");
+  // Dua Tombol Pilihan Bahasa (Indonesia & English)
+  int langBtnW = 142;
+  int langBtnH = 22;
+  int langY = 50;
+
+  // Tombol Indonesia (Kiri)
+  bool isId = (appLang == LANG_ID);
+  tft.fillRoundRect(14, langY, langBtnW, langBtnH, 4, isId ? COLOR_CYAN : COLOR_BG);
+  if (!isId) tft.drawRoundRect(14, langY, langBtnW, langBtnH, 4, COLOR_CARD_BORDER);
+  tft.setTextColor(isId ? COLOR_BG : COLOR_WHITE);
+  tft.setCursor(isId ? 30 : 42, langY + 7);
+  tft.print(isId ? "[ INDONESIA ]" : "INDONESIA");
+
+  // Tombol English (Kanan)
+  bool isEn = (appLang == LANG_EN);
+  tft.fillRoundRect(164, langY, langBtnW, langBtnH, 4, isEn ? COLOR_CYAN : COLOR_BG);
+  if (!isEn) tft.drawRoundRect(164, langY, langBtnW, langBtnH, 4, COLOR_CARD_BORDER);
+  tft.setTextColor(isEn ? COLOR_BG : COLOR_WHITE);
+  tft.setCursor(isEn ? 190 : 202, langY + 7);
+  tft.print(isEn ? "[ ENGLISH ]" : "ENGLISH");
+
+  // Kartu 2: Auto-Sleep Layar TFT
+  tft.fillRoundRect(8, 82, 304, 62, 6, COLOR_CARD);
+  tft.drawRoundRect(8, 82, 304, 62, 6, COLOR_CARD_BORDER);
+
+  tft.setTextSize(1);
+  tft.setCursor(14, 87);
+  tft.setTextColor(COLOR_GOLD);
+  tft.print(appLang == LANG_EN ? "TFT AUTO-SLEEP (POWER SAVING):" : "AUTO-SLEEP LAYAR TFT (HEMAT ENERGI):");
 
   // 6 Tombol Pilihan Menit (Pills)
   const int sleepOpts[6] = {1, 2, 3, 5, 10, 0};
-  const char* sleepLabels[6] = {"1 Mnt", "2 Mnt", "3 Mnt", "5 Mnt", "10Mnt", "OFF"};
+  const char* sleepLabelsID[6] = {"1 Mnt", "2 Mnt", "3 Mnt", "5 Mnt", "10Mnt", "OFF"};
+  const char* sleepLabelsEN[6] = {"1 Min", "2 Min", "3 Min", "5 Min", "10Min", "OFF"};
 
   int btnW = 44;
-  int btnH = 22;
+  int btnH = 20;
   int startX = 14;
   int gapX = 5;
-  int btnY = 63;
+  int btnY = 99;
 
   for (int i = 0; i < 6; i++) {
     int bX = startX + (i * (btnW + gapX));
@@ -2181,85 +2239,78 @@ void drawSettingsScreen() {
       tft.setTextColor(COLOR_WHITE);
     }
 
-    tft.setTextSize(1);
     int textOffset = (i == 4) ? 7 : (i == 5 ? 13 : 7);
-    tft.setCursor(bX + textOffset, btnY + 7);
-    tft.print(sleepLabels[i]);
+    tft.setCursor(bX + textOffset, btnY + 6);
+    tft.print(appLang == LANG_EN ? sleepLabelsEN[i] : sleepLabelsID[i]);
   }
 
-  // Baris Status Konfigurasi Aktif
-  tft.setCursor(16, 91);
+  // Baris Status Auto-Sleep Aktif
+  tft.setCursor(14, 126);
   tft.setTextColor(COLOR_WHITE);
   tft.print("Status: ");
   if (tftSleepMinutes == 0) {
     tft.setTextColor(COLOR_GOLD);
-    tft.print("Layar SELALU ON (Auto-Sleep Nonaktif)");
+    tft.print(appLang == LANG_EN ? "ALWAYS ON (Sleep Disabled)" : "SELALU ON (Sleep Nonaktif)");
   } else {
     tft.setTextColor(COLOR_GREEN_SAFE);
-    tft.printf("Auto-Sleep %d Menit", tftSleepMinutes);
+    tft.printf(appLang == LANG_EN ? "Auto-Sleep %d Min" : "Auto-Sleep %d Menit", tftSleepMinutes);
     if (tftSleepMinutes == 2) {
       tft.setTextColor(COLOR_CYAN);
-      tft.print(" [Rekomendasi]");
+      tft.print(appLang == LANG_EN ? " [Recommended]" : " [Rekomendasi]");
     }
   }
 
-  tft.setCursor(16, 104);
-  tft.setTextColor(COLOR_GRAY_TEXT);
-  tft.print("*Layar bangun instan jika disentuh, ditekan, atau alarm.");
+  // Kartu 3: Audio & Buzzer Alert
+  tft.fillRoundRect(8, 148, 304, 38, 6, COLOR_CARD);
+  tft.drawRoundRect(8, 148, 304, 38, 6, COLOR_CARD_BORDER);
 
-  // Kartu 2: Audio & Buzzer Alert
-  tft.fillRoundRect(8, 123, 304, 53, 6, COLOR_CARD);
-  tft.drawRoundRect(8, 123, 304, 53, 6, COLOR_CARD_BORDER);
-
-  tft.setCursor(16, 129);
+  tft.setCursor(14, 154);
   tft.setTextColor(COLOR_GOLD);
   tft.print("AUDIO & BUZZER ALARM:");
 
-  tft.setCursor(16, 143);
+  tft.setCursor(14, 168);
   if (buzzerMuteTotal) {
     tft.setTextColor(COLOR_RED_ALERT);
-    tft.print("Status: SENYAP TOTAL (Mute Permanen)");
+    tft.print(appLang == LANG_EN ? "Status: TOTAL MUTE (Silent)" : "Status: SENYAP TOTAL (Mute)");
   } else {
     tft.setTextColor(COLOR_GREEN_SAFE);
-    tft.print("Status: SUARA AKTIF (Alarm Normal)");
+    tft.print(appLang == LANG_EN ? "Status: SOUND ACTIVE (Normal)" : "Status: SUARA AKTIF (Normal)");
   }
 
   // Tombol Toggle Mute di Kanan
   int muteBtnW = 76;
-  int muteBtnH = 20;
+  int muteBtnH = 22;
   int muteBtnX = 228;
-  int muteBtnY = 131;
+  int muteBtnY = 156;
   tft.fillRoundRect(muteBtnX, muteBtnY, muteBtnW, muteBtnH, 4, buzzerMuteTotal ? COLOR_RED_ALERT : COLOR_CYAN);
   tft.setTextColor(COLOR_BG);
-  tft.setCursor(muteBtnX + (buzzerMuteTotal ? 16 : 24), muteBtnY + 6);
+  tft.setCursor(muteBtnX + 18, muteBtnY + 7);
   tft.print(buzzerMuteTotal ? "UNMUTE" : "MUTE");
 
-  tft.setCursor(16, 161);
-  tft.setTextColor(COLOR_GRAY_TEXT);
-  tft.print("Tip: Triple-click tombol merah fisik utk mute cepat.");
+  // Kartu 4: Info Firmware & Target Hardware
+  tft.fillRoundRect(8, 190, 304, 22, 6, COLOR_CARD);
+  tft.drawRoundRect(8, 190, 304, 22, 6, COLOR_CARD_BORDER);
 
-  // Kartu 3: Info Firmware & Target Hardware
-  tft.fillRoundRect(8, 180, 304, 30, 6, COLOR_CARD);
-  tft.drawRoundRect(8, 180, 304, 30, 6, COLOR_CARD_BORDER);
-
-  tft.setCursor(16, 191);
+  tft.setCursor(14, 197);
   tft.setTextColor(COLOR_WHITE);
-  tft.print("DEVICE: ");
+  tft.print("DEV: ");
   tft.setTextColor(COLOR_CYAN);
   tft.print(deviceId);
   tft.setTextColor(COLOR_WHITE);
   tft.print(" | FW: ");
   tft.setTextColor(COLOR_GREEN_SAFE);
-  tft.print("v2.6.2-QIC");
-  tft.setTextColor(COLOR_GRAY_TEXT);
-  tft.print(" | ESP32 V1");
+  tft.print("v2.6.2");
+  tft.setTextColor(COLOR_WHITE);
+  tft.print(" | LANG: ");
+  tft.setTextColor(COLOR_GOLD);
+  tft.print(appLang == LANG_EN ? "ENGLISH" : "INDONESIA");
 
   // Footer Navigation Bar
   tft.fillRect(0, 215, 320, 25, COLOR_NAV_BAR);
   tft.drawLine(0, 215, 320, 215, COLOR_CARD_BORDER);
   tft.setTextColor(COLOR_GRAY_TEXT);
   tft.setCursor(10, 222);
-  tft.print("[SELECT]: Geser   [CONFIRM]: Simpan   [BACK]: Menu");
+  tft.print(appLang == LANG_EN ? "[SELECT]: Next   [CONFIRM]: Save   [BACK]: Menu" : "[SELECT]: Geser   [CONFIRM]: Simpan   [BACK]: Menu");
 }
 
 void putTFTToSleep() {
@@ -2778,6 +2829,7 @@ void handleInputs() {
     if (btnBackPressed) {
       preferences.begin("qguard", false);
       preferences.putInt("sleep_min", tftSleepMinutes);
+      preferences.putString("lang", appLang == LANG_EN ? "en" : "id");
       preferences.end();
       beepTouch();
       currentScreen = SCREEN_MENU;
@@ -2787,18 +2839,22 @@ void handleInputs() {
     }
 
     if (btnSelectPressed) {
+      // Siklus 8 pilihan: 0..5 opsi menit tidur, 6: Bahasa Indonesia, 7: English
       const int sleepOpts[6] = {1, 2, 3, 5, 10, 0};
-      int currIdx = 0;
-      for (int i = 0; i < 6; i++) {
-        if (sleepOpts[i] == tftSleepMinutes) {
-          currIdx = i;
-          break;
-        }
+      static int settingsFocus = 0;
+      settingsFocus = (settingsFocus + 1) % 8;
+
+      if (settingsFocus < 6) {
+        tftSleepMinutes = sleepOpts[settingsFocus];
+      } else if (settingsFocus == 6) {
+        appLang = LANG_ID;
+      } else if (settingsFocus == 7) {
+        appLang = LANG_EN;
       }
-      currIdx = (currIdx + 1) % 6;
-      tftSleepMinutes = sleepOpts[currIdx];
+
       preferences.begin("qguard", false);
       preferences.putInt("sleep_min", tftSleepMinutes);
+      preferences.putString("lang", appLang == LANG_EN ? "en" : "id");
       preferences.end();
       beepTouch();
       drawSettingsScreen();
@@ -2808,6 +2864,7 @@ void handleInputs() {
     if (btnConfirmPressed) {
       preferences.begin("qguard", false);
       preferences.putInt("sleep_min", tftSleepMinutes);
+      preferences.putString("lang", appLang == LANG_EN ? "en" : "id");
       preferences.end();
       beepSuccess();
       currentScreen = SCREEN_MENU;
@@ -2822,15 +2879,36 @@ void handleInputs() {
       int touchY = map(p.y, TS_MINY, TS_MAXY, 240, 0);
       touchY = constrain(touchY, 0, 240);
 
-      // Sentuh pilihan Menit Auto-Sleep (Y: 58..92)
-      if (touchY >= 58 && touchY <= 92) {
+      // 1. Sentuh Pilihan Bahasa (Y: 40..78)
+      if (touchY >= 40 && touchY <= 78) {
+        if (touchX >= 10 && touchX < 160) {
+          appLang = LANG_ID;
+          preferences.begin("qguard", false);
+          preferences.putString("lang", "id");
+          preferences.end();
+          beepSuccess();
+          drawSettingsScreen();
+          return;
+        } else if (touchX >= 160 && touchX <= 315) {
+          appLang = LANG_EN;
+          preferences.begin("qguard", false);
+          preferences.putString("lang", "en");
+          preferences.end();
+          beepSuccess();
+          drawSettingsScreen();
+          return;
+        }
+      }
+
+      // 2. Sentuh Pilihan Menit Auto-Sleep (Y: 88..130)
+      if (touchY >= 88 && touchY <= 130) {
         int selectedMin = -1;
         if (touchX >= 10 && touchX < 60)        selectedMin = 1;
         else if (touchX >= 60 && touchX < 110)  selectedMin = 2;
         else if (touchX >= 110 && touchX < 160) selectedMin = 3;
         else if (touchX >= 160 && touchX < 210) selectedMin = 5;
         else if (touchX >= 210 && touchX < 258) selectedMin = 10;
-        else if (touchX >= 258 && touchX <= 310) selectedMin = 0;
+        else if (touchX >= 258 && touchX <= 315) selectedMin = 0;
 
         if (selectedMin >= 0) {
           tftSleepMinutes = selectedMin;
@@ -2843,8 +2921,8 @@ void handleInputs() {
         }
       }
 
-      // Sentuh Toggle Mute Buzzer (Y: 125..158, X: 215..315)
-      if (touchY >= 125 && touchY <= 158 && touchX >= 215 && touchX <= 315) {
+      // 3. Sentuh Toggle Mute Buzzer (Y: 148..186, X: 210..315)
+      if (touchY >= 148 && touchY <= 186 && touchX >= 210 && touchX <= 315) {
         buzzerMuteTotal = !buzzerMuteTotal;
         digitalWrite(PIN_BUZZER, LOW);
         beepTouch();
@@ -2852,10 +2930,11 @@ void handleInputs() {
         return;
       }
 
-      // Sentuh Footer Bar (Y >= 215)
+      // 4. Sentuh Footer Bar (Y >= 215)
       if (touchY >= 215) {
         preferences.begin("qguard", false);
         preferences.putInt("sleep_min", tftSleepMinutes);
+        preferences.putString("lang", appLang == LANG_EN ? "en" : "id");
         preferences.end();
         beepTouch();
         currentScreen = SCREEN_MENU;
