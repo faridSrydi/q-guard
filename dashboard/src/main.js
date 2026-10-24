@@ -503,7 +503,8 @@ async function renderCurrentView() {
 // VIEW 1: OVERVIEW
 // -------------------------------------------------------------
 async function renderOverviewView() {
-    el.contentBody.innerHTML = `<div class="loading-state">Memuat data armada...</div>`;
+    const isEn = getLang() === 'en';
+    el.contentBody.innerHTML = `<div class="loading-state">${isEn ? 'Loading fleet overview...' : 'Memuat data armada...'}</div>`;
     try {
         const [devicesData, shipmentsData, riskSummary, alertSummary, historyData] = await Promise.all([
             api.getDevices().catch(() => ({ devices: [] })),
@@ -557,8 +558,8 @@ async function renderOverviewView() {
                         <span class="metric-unit" data-i18n="overview.incident_unit">insiden</span>
                     </div>
                     <div class="metric-footer">
-                        <span class="metric-badge ${criticalAlerts > 0 ? 'crit' : 'safe'}">${criticalAlerts > 0 ? (getLang() === 'en' ? 'Action Required' : 'Perlu Tindakan') : (getLang() === 'en' ? 'Safe' : 'Aman')}</span>
-                        <span>${unackedAlerts} ${getLang() === 'en' ? 'unconfirmed' : 'belum dikonfirmasi'}</span>
+                        <span class="metric-badge ${criticalAlerts > 0 ? 'crit' : 'safe'}">${criticalAlerts > 0 ? (isEn ? 'Action Required' : 'Perlu Tindakan') : (isEn ? 'Safe' : 'Aman')}</span>
+                        <span>${unackedAlerts} ${isEn ? 'unconfirmed' : 'belum dikonfirmasi'}</span>
                     </div>
                 </div>
 
@@ -572,8 +573,8 @@ async function renderOverviewView() {
                         <span class="metric-unit" data-i18n="overview.unit">unit</span>
                     </div>
                     <div class="metric-footer">
-                        <span class="metric-badge ${state.wifiStatus === 'online' ? 'safe' : 'crit'}" id="overview-wifi-badge">Wi-Fi: ${state.wifiStatus === 'online' ? (getLang() === 'en' ? 'Connected' : 'Terhubung') : (getLang() === 'en' ? 'Disconnected' : 'Terputus')}</span>
-                        <span id="overview-wifi-sub">${state.wifiStatus === 'online' ? (getLang() === 'en' ? 'ESP32 Connected' : 'ESP32 Terhubung') : (getLang() === 'en' ? 'Local Storage (MicroSD)' : 'Penyimpanan Lokal (MicroSD)')}</span>
+                        <span class="metric-badge ${state.wifiStatus === 'online' ? 'safe' : 'crit'}" id="overview-wifi-badge">Wi-Fi: ${state.wifiStatus === 'online' ? (isEn ? 'Connected' : 'Terhubung') : (isEn ? 'Disconnected' : 'Terputus')}</span>
+                        <span id="overview-wifi-sub">${state.wifiStatus === 'online' ? (isEn ? 'ESP32 Connected' : 'ESP32 Terhubung') : (isEn ? 'Local Storage (MicroSD)' : 'Penyimpanan Lokal (MicroSD)')}</span>
                     </div>
                 </div>
 
@@ -587,7 +588,7 @@ async function renderOverviewView() {
                         <span class="metric-unit">%</span>
                     </div>
                     <div class="metric-footer">
-                        <span class="metric-badge safe">Standar SNI/WHO</span>
+                        <span class="metric-badge safe">${isEn ? 'SNI/WHO Standard' : 'Standar SNI/WHO'}</span>
                         <span data-i18n="overview.standard_compliant">Parameter Sesuai Standar</span>
                     </div>
                 </div>
@@ -612,7 +613,7 @@ async function renderOverviewView() {
                         <canvas id="overviewRiskDonut"></canvas>
                     </div>
                     <div style="margin-top: 15px; font-size: 12px; color: var(--text-secondary); text-align: center;">
-                        ${riskSummary.counts?.critical || 0} ${getLang() === 'en' ? 'Critical' : 'Kritis'} • ${riskSummary.counts?.warning || 0} ${getLang() === 'en' ? 'Warning' : 'Waspada'} • ${riskSummary.counts?.normal || 0} Normal
+                        ${riskSummary.counts?.critical || 0} ${isEn ? 'Critical' : 'Kritis'} • ${riskSummary.counts?.warning || 0} ${isEn ? 'Warning' : 'Waspada'} • ${riskSummary.counts?.normal || 0} Normal
                     </div>
                 </div>
             </div>
@@ -620,17 +621,17 @@ async function renderOverviewView() {
             <div class="panel">
                 <div class="panel-header">
                     <h2 class="panel-title">${icons.clipboard} <span data-i18n="overview.recent_shipments">Pengiriman Karantina Aktif</span></h2>
-                    <button class="btn btn-secondary btn-sm" id="btn-create-shipment-quick">${icons.plus} ${getLang() === 'en' ? 'Add Cargo' : 'Tambah Kargo'}</button>
+                    <button class="btn btn-secondary btn-sm" id="btn-create-shipment-quick">${icons.plus} ${isEn ? 'Add Cargo' : 'Tambah Kargo'}</button>
                 </div>
                 <div class="table-wrapper">
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>${getLang() === 'en' ? 'Cargo ID' : 'ID Kargo'}</th>
+                                <th>${isEn ? 'Cargo ID' : 'ID Kargo'}</th>
                                 <th data-i18n="overview.col_device">Perangkat</th>
                                 <th data-i18n="overview.col_commodity">Komoditas</th>
                                 <th data-i18n="overview.col_route">Rute Perjalanan</th>
-                                <th>${getLang() === 'en' ? 'Temp Limit' : 'Batas Suhu'}</th>
+                                <th>${isEn ? 'Temp Limit' : 'Batas Suhu'}</th>
                                 <th data-i18n="common.status">Status</th>
                                 <th data-i18n="common.action">Aksi</th>
                             </tr>
@@ -639,16 +640,16 @@ async function renderOverviewView() {
                             ${state.shipments.length > 0 ? state.shipments.map(s => `
                                 <tr>
                                     <td class="mono-cell" style="font-weight: 600; color: var(--ice-blue);">${s.id}</td>
-                                    <td><span class="mono-cell">${s.device_id || (getLang() === 'en' ? 'Not Paired' : 'Belum Dihubungkan')}</span></td>
+                                    <td><span class="mono-cell">${s.device_id || (isEn ? 'Not Paired' : 'Belum Dihubungkan')}</span></td>
                                     <td><strong>${formatCommodityName(s.commodity)}</strong></td>
-                                    <td>${s.origin || (getLang() === 'en' ? 'Origin Port' : 'Pelabuhan Asal')} → ${s.destination || (getLang() === 'en' ? 'Destination' : 'Tujuan')}</td>
+                                    <td>${s.origin || (isEn ? 'Origin Port' : 'Pelabuhan Asal')} → ${s.destination || (isEn ? 'Destination' : 'Tujuan')}</td>
                                     <td><span class="mono-cell">${s.temp_min}°C ~ ${s.temp_max}°C</span></td>
-                                    <td><span class="status-pill ${s.status === 'active' ? 'NORMAL' : 'CAUTION'}">${s.status === 'active' ? (getLang() === 'en' ? 'ACTIVE' : 'AKTIF') : s.status}</span></td>
+                                    <td><span class="status-pill ${s.status === 'active' ? 'NORMAL' : 'CAUTION'}">${s.status === 'active' ? (isEn ? 'ACTIVE' : 'AKTIF') : s.status}</span></td>
                                     <td>
                                         <button class="btn btn-secondary btn-sm btn-inspect-shipment" data-id="${s.id}" data-i18n="common.detail">Detail</button>
                                     </td>
                                 </tr>
-                            `).join('') : `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Belum ada kargo aktif terdaftar. Klik tombol Tambah Kargo untuk mendaftarkan kargo baru.</td></tr>`}
+                            `).join('') : `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">${isEn ? 'No active cargo registered. Click Add Cargo button to register new shipment.' : 'Belum ada kargo aktif terdaftar. Klik tombol Tambah Kargo untuk mendaftarkan kargo baru.'}</td></tr>`}
                         </tbody>
                     </table>
                 </div>
@@ -667,11 +668,12 @@ async function renderOverviewView() {
         renderOverviewCharts(histReadings, riskSummary.counts || {});
 
     } catch (err) {
-        el.contentBody.innerHTML = `<div class="error-state">Gagal memuat ringkasan: ${err.message}</div>`;
+        el.contentBody.innerHTML = `<div class="error-state">${isEn ? 'Failed to load summary:' : 'Gagal memuat ringkasan:'} ${err.message}</div>`;
     }
 }
 
 function renderOverviewCharts(readings = [], riskCounts = {}) {
+    const isEn = getLang() === 'en';
     const ctxTemp = document.getElementById('overviewTempChart')?.getContext('2d');
     if (ctxTemp) {
         if (state.charts.overviewTemp) {
@@ -694,7 +696,7 @@ function renderOverviewCharts(readings = [], riskCounts = {}) {
             dataP2 = readings.map(r => r.temperature_probe_2 !== null && !isNaN(r.temperature_probe_2) ? Number(r.temperature_probe_2) : null);
             dataP3 = readings.map(r => r.temperature_probe_3 !== null && !isNaN(r.temperature_probe_3) ? Number(r.temperature_probe_3) : null);
         } else {
-            labels = ['Menunggu Telemetri'];
+            labels = [isEn ? 'Awaiting Telemetry' : 'Menunggu Telemetri'];
             dataP1 = [null];
             dataP2 = [null];
             dataP3 = [null];
@@ -715,7 +717,7 @@ function renderOverviewCharts(readings = [], riskCounts = {}) {
                 labels: labels,
                 datasets: [
                     {
-                        label: isMobileOverview ? 'P1 Inti (°C)' : 'Probe 1 • Inti Kargo (°C)',
+                        label: isMobileOverview ? (isEn ? 'P1 Core (°C)' : 'P1 Inti (°C)') : (isEn ? 'Probe 1 • Cargo Core (°C)' : 'Probe 1 • Inti Kargo (°C)'),
                         data: dataP1,
                         borderColor: '#0284c7',
                         backgroundColor: gradP1,
@@ -729,7 +731,7 @@ function renderOverviewCharts(readings = [], riskCounts = {}) {
                         pointBorderWidth: 1.5
                     },
                     {
-                        label: isMobileOverview ? 'P2 Buffer (°C)' : 'Probe 2 • Buffer Es (°C)',
+                        label: isMobileOverview ? (isEn ? 'P2 Buffer (°C)' : 'P2 Buffer (°C)') : (isEn ? 'Probe 2 • Ice Buffer (°C)' : 'Probe 2 • Buffer Es (°C)'),
                         data: dataP2,
                         borderColor: '#10b981',
                         backgroundColor: 'transparent',
@@ -743,7 +745,7 @@ function renderOverviewCharts(readings = [], riskCounts = {}) {
                         pointBorderWidth: 1.5
                     },
                     {
-                        label: isMobileOverview ? 'P3 Pintu (°C)' : 'Probe 3 • Ambang Pintu (°C)',
+                        label: isMobileOverview ? (isEn ? 'P3 Door (°C)' : 'P3 Pintu (°C)') : (isEn ? 'Probe 3 • Door Threshold (°C)' : 'Probe 3 • Ambang Pintu (°C)'),
                         data: dataP3,
                         borderColor: '#f59e0b',
                         backgroundColor: 'transparent',
@@ -758,7 +760,7 @@ function renderOverviewCharts(readings = [], riskCounts = {}) {
                         pointBorderWidth: 1.5
                     },
                     {
-                        label: isMobileOverview ? 'Batas Max (-18°C)' : 'Batas Maksimum Beku (-18.0°C)',
+                        label: isMobileOverview ? (isEn ? 'Max Limit (-18°C)' : 'Batas Max (-18°C)') : (isEn ? 'Max Freezing Limit (-18.0°C)' : 'Batas Maksimum Beku (-18.0°C)'),
                         data: Array(labels.length).fill(-18.0),
                         borderColor: '#ef4444',
                         borderDash: [6, 4],
@@ -767,7 +769,7 @@ function renderOverviewCharts(readings = [], riskCounts = {}) {
                         fill: false
                     },
                     {
-                        label: isMobileOverview ? 'Batas Min (-25°C)' : 'Batas Pendingin Min (-25.0°C)',
+                        label: isMobileOverview ? (isEn ? 'Min Limit (-25°C)' : 'Batas Min (-25°C)') : (isEn ? 'Min Cooling Limit (-25.0°C)' : 'Batas Pendingin Min (-25.0°C)'),
                         data: Array(labels.length).fill(-25.0),
                         borderColor: '#38bdf8',
                         borderDash: [5, 5],
@@ -815,11 +817,11 @@ function renderOverviewCharts(readings = [], riskCounts = {}) {
                         callbacks: {
                             label: function(context) {
                                 const val = context.parsed.y;
-                                if (context.dataset.label.includes('Batas')) {
+                                if (context.dataset.label.includes('Batas') || context.dataset.label.includes('Limit')) {
                                     return `🚨 ${context.dataset.label}: ${val.toFixed(1)}°C`;
                                 }
                                 const diff = val - (-18.0);
-                                const status = diff > 0 ? `(⚠️ +${diff.toFixed(1)}°C)` : `(✅ Aman)`;
+                                const status = diff > 0 ? `(⚠️ +${diff.toFixed(1)}°C)` : (isEn ? `(✅ Safe)` : `(✅ Aman)`);
                                 return `${context.dataset.label}: ${val !== null ? val.toFixed(1) : '--'}°C ${status}`;
                             }
                         }
@@ -865,7 +867,9 @@ function renderOverviewCharts(readings = [], riskCounts = {}) {
         state.charts.overviewDonut = new Chart(ctxDonut, {
             type: 'doughnut',
             data: {
-                labels: hasCounts ? ['Aman (Normal)', 'Waspada (Warning)', 'Kritis (Critical)'] : ['Belum Ada Insiden (100% Normal)'],
+                labels: hasCounts 
+                    ? (isEn ? ['Safe (Normal)', 'Warning (Caution)', 'Critical'] : ['Aman (Normal)', 'Waspada (Warning)', 'Kritis (Critical)']) 
+                    : [isEn ? 'No Incidents (100% Normal)' : 'Belum Ada Insiden (100% Normal)'],
                 datasets: [{
                     data: hasCounts ? [norm, warn, crit] : [1],
                     backgroundColor: hasCounts ? ['#10b981', '#f59e0b', '#ef4444'] : ['#10b981'],
@@ -902,7 +906,7 @@ function renderOverviewCharts(readings = [], riskCounts = {}) {
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const val = context.parsed;
                                 const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '100';
-                                return ` ${context.label}: ${val} kontainer (${pct}%)`;
+                                return isEn ? ` ${context.label}: ${val} container(s) (${pct}%)` : ` ${context.label}: ${val} kontainer (${pct}%)`;
                             }
                         }
                     }
@@ -917,7 +921,8 @@ function renderOverviewCharts(readings = [], riskCounts = {}) {
 // VIEW 2: LIVE MONITORING
 // -------------------------------------------------------------
 async function renderMonitoringView() {
-    el.contentBody.innerHTML = `<div class="loading-state">Menghubungkan ke telemetri sensor...</div>`;
+    const isEn = getLang() === 'en';
+    el.contentBody.innerHTML = `<div class="loading-state">${isEn ? 'Connecting to sensor telemetry...' : 'Menghubungkan ke telemetri sensor...'}</div>`;
     try {
         const latestData = await api.getLatest(state.selectedDeviceId).catch(() => ({ reading: null }));
         const r = latestData?.reading || {
@@ -933,9 +938,9 @@ async function renderMonitoringView() {
             latitude: null,
             longitude: null,
             gps_fix_status: 'NO_FIX',
-            sensor_health: 'MENUNGGU DATA',
+            sensor_health: isEn ? 'AWAITING DATA' : 'MENUNGGU DATA',
             risk_level: 'NORMAL',
-            risk_reasons: 'Menunggu pengiriman data telemetri dari alat...',
+            risk_reasons: isEn ? 'Awaiting telemetry transmission from device...' : 'Menunggu pengiriman data telemetri dari alat...',
             timestamp: null
         };
 
@@ -963,8 +968,8 @@ async function renderMonitoringView() {
             <div id="mon-waiting-banner" class="${isDeviceConnected ? 'hidden' : ''}" style="background: rgba(14, 165, 233, 0.08); border: 1px solid var(--primary-blue-border); padding: 10px 16px; border-radius: var(--radius-sm); margin-bottom: 16px; font-size: 13px; color: var(--primary-blue); display: ${isDeviceConnected ? 'none' : 'flex'}; align-items: center; gap: 10px;">
                 <span style="font-size: 16px;">📡</span>
                 <div>
-                    <strong>Menunggu data dari unit ${state.selectedDeviceId}...</strong>
-                    <span style="color: var(--text-secondary); font-size: 12px; margin-left: 6px;">Menghubungkan ke sensor ESP32 via Wi-Fi.</span>
+                    <strong>${isEn ? `Waiting for telemetry from unit ${state.selectedDeviceId}...` : `Menunggu data dari unit ${state.selectedDeviceId}...`}</strong>
+                    <span style="color: var(--text-secondary); font-size: 12px; margin-left: 6px;">${isEn ? 'Connecting to ESP32 sensors via Wi-Fi.' : 'Menghubungkan ke sensor ESP32 via Wi-Fi.'}</span>
                 </div>
             </div>
 
@@ -974,7 +979,7 @@ async function renderMonitoringView() {
                     <span class="wifi-strip-icon ${isWifiOnline ? 'online' : 'offline'}" id="mon-wifi-icon">${isWifiOnline ? icons.wifi : icons.wifiOff}</span>
                     <div class="wifi-strip-meta">
                         <span class="wifi-strip-title" data-i18n="mon.wifi_strip_title">Status Wi-Fi</span>
-                        <strong class="wifi-strip-val ${isWifiOnline ? 'text-success' : 'text-danger'}" id="mon-wifi-val">${isWifiOnline ? (getLang() === 'en' ? 'Connected' : 'Terhubung') : (getLang() === 'en' ? 'Disconnected' : 'Terputus')}</strong>
+                        <strong class="wifi-strip-val ${isWifiOnline ? 'text-success' : 'text-danger'}" id="mon-wifi-val">${isWifiOnline ? (isEn ? 'Connected' : 'Terhubung') : (isEn ? 'Disconnected' : 'Terputus')}</strong>
                     </div>
                 </div>
                 <div class="wifi-strip-divider"></div>
@@ -990,7 +995,7 @@ async function renderMonitoringView() {
                     <span class="wifi-strip-icon">${icons.refresh}</span>
                     <div class="wifi-strip-meta">
                         <span class="wifi-strip-title" data-i18n="mon.last_update">Pembaruan Terakhir</span>
-                        <strong class="wifi-strip-val" id="mon-last-sync-time">${r.timestamp ? formatTimestamp(r.timestamp) : (getLang() === 'en' ? 'Awaiting telemetry...' : 'Menunggu telemetri...')}</strong>
+                        <strong class="wifi-strip-val" id="mon-last-sync-time">${r.timestamp ? formatTimestamp(r.timestamp) : (isEn ? 'Awaiting telemetry...' : 'Menunggu telemetri...')}</strong>
                     </div>
                 </div>
                 <div class="wifi-strip-divider"></div>
@@ -1015,7 +1020,7 @@ async function renderMonitoringView() {
                     </div>
                     <div class="metric-footer">
                         <span class="metric-badge ${r.temperature_probe_1 !== null ? 'safe' : 'crit'}">DS18B20</span>
-                        <span>${r.temperature_probe_1 !== null ? (getLang() === 'en' ? 'Cargo Core (12 cm)' : 'Suhu Inti Kargo (12 cm)') : (getLang() === 'en' ? 'Probe Not Detected' : 'Probe Belum Terdeteksi')}</span>
+                        <span>${r.temperature_probe_1 !== null ? (isEn ? 'Cargo Core (12 cm)' : 'Suhu Inti Kargo (12 cm)') : (isEn ? 'Probe Not Detected' : 'Probe Belum Terdeteksi')}</span>
                     </div>
                 </div>
 
@@ -1030,7 +1035,7 @@ async function renderMonitoringView() {
                     </div>
                     <div class="metric-footer">
                         <span class="metric-badge ${r.temperature_probe_2 !== null ? 'safe' : 'crit'}">DS18B20</span>
-                        <span>${r.temperature_probe_2 !== null ? (getLang() === 'en' ? 'Latent Ice Buffer Layer' : 'Lapisan Es Penahan Panas') : (getLang() === 'en' ? 'Probe Not Detected' : 'Probe Belum Terdeteksi')}</span>
+                        <span>${r.temperature_probe_2 !== null ? (isEn ? 'Latent Ice Buffer Layer' : 'Lapisan Es Penahan Panas') : (isEn ? 'Probe Not Detected' : 'Probe Belum Terdeteksi')}</span>
                     </div>
                 </div>
 
@@ -1045,7 +1050,7 @@ async function renderMonitoringView() {
                     </div>
                     <div class="metric-footer">
                         <span class="metric-badge ${r.temperature_probe_3 !== null ? 'safe' : 'crit'}">DS18B20</span>
-                        <span>${r.temperature_probe_3 !== null ? (getLang() === 'en' ? 'Door Gasket Perimeter' : 'Perimeter Gasket Pintu') : (getLang() === 'en' ? 'Probe Not Detected' : 'Probe Belum Terdeteksi')}</span>
+                        <span>${r.temperature_probe_3 !== null ? (isEn ? 'Door Gasket Perimeter' : 'Perimeter Gasket Pintu') : (isEn ? 'Probe Not Detected' : 'Probe Belum Terdeteksi')}</span>
                     </div>
                 </div>
 
@@ -1061,31 +1066,30 @@ async function renderMonitoringView() {
                     </div>
                     <div class="metric-footer">
                         <span class="metric-badge safe">BME280</span>
-                        <span>Udara Luar Boks</span>
+                        <span data-i18n="mon.ambient_box">${isEn ? 'Container Outer Air' : 'Udara Luar Boks'}</span>
                     </div>
                 </div>
             </div>
 
             <!-- Secondary Metrics -->
-            <!-- Secondary Metrics -->
             <div class="grid-cards">
                 <div class="metric-card ${r.door_status === 'OPEN' ? 'card-danger' : 'card-success'}" id="card-mon-door">
                     <div class="metric-header">
-                        <span class="metric-label">Pintu Kontainer</span>
+                        <span class="metric-label" data-i18n="mon.door_card_title">${isEn ? 'Container Door' : 'Pintu Kontainer'}</span>
                         <span class="metric-icon">${icons.door}</span>
                     </div>
                     <div class="metric-value-row">
-                        <span class="metric-value" id="mon-door">${r.door_status === 'OPEN' ? 'TERBUKA' : 'TERTUTUP'}</span>
+                        <span class="metric-value" id="mon-door">${r.door_status === 'OPEN' ? (isEn ? 'OPEN' : 'TERBUKA') : (isEn ? 'CLOSED' : 'TERTUTUP')}</span>
                     </div>
                     <div class="metric-footer">
                         <span class="metric-badge ${r.door_status === 'OPEN' ? 'crit' : 'safe'}" id="badge-mon-door">MC-38</span>
-                        <span id="sub-mon-door">${r.door_status === 'OPEN' ? 'Pintu Terbuka' : 'Tertutup'}</span>
+                        <span id="sub-mon-door">${r.door_status === 'OPEN' ? (isEn ? 'Door Open' : 'Pintu Terbuka') : (isEn ? 'Closed' : 'Tertutup')}</span>
                     </div>
                 </div>
 
                 <div class="metric-card ${totalG && totalG > 2.0 ? 'card-warning' : 'card-success'}" id="card-mon-shock">
                     <div class="metric-header">
-                        <span class="metric-label">Guncangan & Getaran</span>
+                        <span class="metric-label" data-i18n="mon.shock_card_title">${isEn ? 'Shock & Vibration' : 'Guncangan & Getaran'}</span>
                         <span class="metric-icon">${icons.vibration}</span>
                     </div>
                     <div class="metric-value-row">
@@ -1094,34 +1098,34 @@ async function renderMonitoringView() {
                     </div>
                     <div class="metric-footer">
                         <span class="metric-badge ${totalG && totalG > 2.0 ? 'crit' : 'safe'}" id="badge-mon-shock">MPU6050</span>
-                        <span id="sub-mon-shock">${totalG !== null ? (totalG > 2.0 ? 'Guncangan Tinggi' : 'Getaran Normal') : 'Menunggu Data MPU'}</span>
+                        <span id="sub-mon-shock">${totalG !== null ? (totalG > 2.0 ? (isEn ? 'High Shock' : 'Guncangan Tinggi') : (isEn ? 'Normal Vibration' : 'Getaran Normal')) : (isEn ? 'Awaiting MPU Data' : 'Menunggu Data MPU')}</span>
                     </div>
                 </div>
 
                 <div class="metric-card card-purple" id="card-mon-gps">
                     <div class="metric-header">
-                        <span class="metric-label">Posisi GPS</span>
+                        <span class="metric-label" data-i18n="mon.gps_card_title">${isEn ? 'GPS Position' : 'Posisi GPS'}</span>
                         <span class="metric-icon">${icons.gps}</span>
                     </div>
                     <div class="metric-value-row">
-                        <span class="metric-value" id="mon-gps" style="font-size: 17px;">${(r.gps_fix_status === 'FIX_3D' || r.gps_fix_status === '3D_FIX') ? '3D Fix' : (r.gps_fix_status === 'NO_FIX' ? 'Mencari Satelit' : (r.gps_fix_status || 'Mencari Satelit'))}</span>
+                        <span class="metric-value" id="mon-gps" style="font-size: 17px;">${(r.gps_fix_status === 'FIX_3D' || r.gps_fix_status === '3D_FIX') ? '3D Fix' : (r.gps_fix_status === 'NO_FIX' ? (isEn ? 'Searching Satellites' : 'Mencari Satelit') : (r.gps_fix_status || (isEn ? 'Searching Satellites' : 'Mencari Satelit')))}</span>
                     </div>
                     <div class="metric-footer">
-                        <span class="mono-cell" id="mon-coords">${(r.latitude && Math.abs(r.latitude) > 0.0001) ? Number(r.latitude).toFixed(4) + ', ' + Number(r.longitude).toFixed(4) : 'Mencari Satelit (-- , --)'}</span>
+                        <span class="mono-cell" id="mon-coords">${(r.latitude && Math.abs(r.latitude) > 0.0001) ? Number(r.latitude).toFixed(4) + ', ' + Number(r.longitude).toFixed(4) : (isEn ? 'Searching Satellites (-- , --)' : 'Mencari Satelit (-- , --)')}</span>
                     </div>
                 </div>
 
                 <div class="metric-card ${r.risk_level === 'CRITICAL' ? 'card-danger' : (r.risk_level === 'WARNING' ? 'card-warning' : 'card-success')}" id="card-mon-risk">
                     <div class="metric-header">
-                        <span class="metric-label">Evaluasi Risiko</span>
+                        <span class="metric-label" data-i18n="mon.risk_card_title">${isEn ? 'Risk Evaluation' : 'Evaluasi Risiko'}</span>
                         <span class="metric-icon">${icons.zap}</span>
                     </div>
                     <div class="metric-value-row">
-                        <span class="metric-value" id="mon-risk">${r.risk_level === 'CRITICAL' ? 'KRITIS' : (r.risk_level === 'WARNING' ? 'WASPADA' : 'AMAN')}</span>
+                        <span class="metric-value" id="mon-risk">${r.risk_level === 'CRITICAL' ? (isEn ? 'CRITICAL' : 'KRITIS') : (r.risk_level === 'WARNING' ? (isEn ? 'WARNING' : 'WASPADA') : (isEn ? 'SAFE' : 'AMAN'))}</span>
                     </div>
                     <div class="metric-footer">
-                        <span class="metric-badge ${r.risk_level === 'CRITICAL' ? 'crit' : (r.risk_level === 'WARNING' ? 'warn' : 'safe')}" id="badge-mon-risk">Status Risiko</span>
-                        <span id="mon-risk-reason">${r.risk_reasons ? r.risk_reasons.replace(/DOOR_OPEN/g, 'Pintu Terbuka').replace(/TEMP_OUT_OF_BOUNDS/g, 'Suhu Diluar Batas').replace(/SHOCK_DETECTED/g, 'Guncangan Terdeteksi').replace(/Skor:/g, 'Skor Risiko: ') : 'Kondisi Normal'}</span>
+                        <span class="metric-badge ${r.risk_level === 'CRITICAL' ? 'crit' : (r.risk_level === 'WARNING' ? 'warn' : 'safe')}" id="badge-mon-risk" data-i18n="mon.risk_badge">${isEn ? 'Risk Status' : 'Status Risiko'}</span>
+                        <span id="mon-risk-reason">${r.risk_reasons ? (isEn ? r.risk_reasons.replace(/DOOR_OPEN/g, 'Door Opened').replace(/TEMP_OUT_OF_BOUNDS/g, 'Temperature Excursion').replace(/SHOCK_DETECTED/g, 'Shock Detected').replace(/Skor:/g, 'Risk Score: ').replace(/Pintu Terbuka/g, 'Door Opened').replace(/Suhu Diluar Batas/g, 'Temperature Excursion').replace(/Guncangan Terdeteksi/g, 'Shock Detected') : r.risk_reasons.replace(/DOOR_OPEN/g, 'Pintu Terbuka').replace(/TEMP_OUT_OF_BOUNDS/g, 'Suhu Diluar Batas').replace(/SHOCK_DETECTED/g, 'Guncangan Terdeteksi').replace(/Skor:/g, 'Skor Risiko: ')) : (isEn ? 'Normal Conditions' : 'Kondisi Normal')}</span>
                     </div>
                 </div>
             </div>
@@ -1130,29 +1134,29 @@ async function renderMonitoringView() {
             <div class="live-trace-panel">
                 <div class="live-trace-header">
                     <div class="trace-title-wrapper">
-                        <h2 class="panel-title" style="margin-bottom: 0;">${icons.telemetry} Grafik Suhu Tri-Probe (Real-time)</h2>
+                        <h2 class="panel-title" style="margin-bottom: 0;">${icons.telemetry} <span data-i18n="mon.trace_title">${isEn ? 'Tri-Probe Temperature Chart (Real-time)' : 'Grafik Suhu Tri-Probe (Real-time)'}</span></h2>
                         <span class="live-beacon"><span class="beacon-dot"></span> Real-time</span>
                     </div>
                     <div class="trace-pills-row">
-                        <div class="probe-pill p1" title="Suhu Inti Komoditas (Kedalaman 12 cm)">
+                        <div class="probe-pill p1" title="${isEn ? 'Cargo Core Temperature (12 cm Depth)' : 'Suhu Inti Komoditas (Kedalaman 12 cm)'}">
                             <span class="probe-dot"></span>
-                            <span>P1 Inti:</span>
+                            <span>${isEn ? 'P1 Core:' : 'P1 Inti:'}</span>
                             <strong id="trace-p1">${r.temperature_probe_1 !== null ? Number(r.temperature_probe_1).toFixed(1) + '°C' : '--'}</strong>
                         </div>
-                        <div class="probe-pill p2" title="Suhu Buffer Es Tengah">
+                        <div class="probe-pill p2" title="${isEn ? 'Center Ice Buffer Temperature' : 'Suhu Buffer Es Tengah'}">
                             <span class="probe-dot"></span>
-                            <span>P2 Buffer:</span>
+                            <span>${isEn ? 'P2 Buffer:' : 'P2 Buffer:'}</span>
                             <strong id="trace-p2">${r.temperature_probe_2 !== null ? Number(r.temperature_probe_2).toFixed(1) + '°C' : '--'}</strong>
                         </div>
-                        <div class="probe-pill p3" title="Suhu Ambang Pintu">
+                        <div class="probe-pill p3" title="${isEn ? 'Door Perimeter Temperature' : 'Suhu Ambang Pintu'}">
                             <span class="probe-dot"></span>
-                            <span>P3 Pintu:</span>
+                            <span>${isEn ? 'P3 Door:' : 'P3 Pintu:'}</span>
                             <strong id="trace-p3">${r.temperature_probe_3 !== null ? Number(r.temperature_probe_3).toFixed(1) + '°C' : '--'}</strong>
                         </div>
-                        <div class="probe-pill thresh" title="Batas Aman Maksimum: -18.0°C">
+                        <div class="probe-pill thresh" title="${isEn ? 'Maximum Safe Limit: -18.0°C' : 'Batas Aman Maksimum: -18.0°C'}">
                             <span class="probe-dot"></span>
-                            <span>Batas:</span>
-                            <strong>Maks -18.0°C</strong>
+                            <span>${isEn ? 'Limit:' : 'Batas:'}</span>
+                            <strong>${isEn ? 'Max -18.0°C' : 'Maks -18.0°C'}</strong>
                         </div>
                     </div>
                 </div>
@@ -1164,13 +1168,13 @@ async function renderMonitoringView() {
                 <div class="trace-stats-strip">
                     <div class="trace-stat-group">
                         <div class="trace-stat-item">
-                            <span>Selisih Suhu (ΔT):</span>
+                            <span>${isEn ? 'Temp Difference (ΔT):' : 'Selisih Suhu (ΔT):'}</span>
                             <strong id="trace-delta">${(r.temperature_probe_3 !== null && r.temperature_probe_1 !== null) ? Math.abs(Number(r.temperature_probe_3) - Number(r.temperature_probe_1)).toFixed(1) + '°C' : '--'}</strong>
                         </div>
                         <div class="trace-stat-item">
-                            <span>Sebaran:</span>
+                            <span>${isEn ? 'Spread:' : 'Sebaran:'}</span>
                             <span class="status-pill ${(r.temperature_probe_3 !== null && r.temperature_probe_1 !== null && Math.abs(Number(r.temperature_probe_3) - Number(r.temperature_probe_1)) <= 2.0) ? 'NORMAL' : 'CAUTION'}" id="trace-gradient-status">
-                                ${(r.temperature_probe_3 !== null && r.temperature_probe_1 !== null) ? (Math.abs(Number(r.temperature_probe_3) - Number(r.temperature_probe_1)) <= 2.0 ? 'HOMOGEN' : 'VARIASI TINGGI') : '--'}
+                                ${(r.temperature_probe_3 !== null && r.temperature_probe_1 !== null) ? (Math.abs(Number(r.temperature_probe_3) - Number(r.temperature_probe_1)) <= 2.0 ? (isEn ? 'HOMOGENEOUS' : 'HOMOGEN') : (isEn ? 'HIGH GRADIENT' : 'VARIASI TINGGI')) : '--'}
                             </span>
                         </div>
                         <div class="trace-stat-item">
@@ -1179,7 +1183,7 @@ async function renderMonitoringView() {
                         </div>
                     </div>
                     <div class="trace-stat-item" style="color: var(--text-muted);">
-                        <span id="mon-last-sample">${r.timestamp ? 'Pembaruan: ' + formatTimestamp(r.timestamp) : 'Menunggu Sampel Pertama'}</span>
+                        <span id="mon-last-sample">${r.timestamp ? (isEn ? 'Updated: ' : 'Pembaruan: ') + formatTimestamp(r.timestamp) : (isEn ? 'Awaiting First Sample' : 'Menunggu Sampel Pertama')}</span>
                     </div>
                 </div>
             </div>
@@ -1188,7 +1192,7 @@ async function renderMonitoringView() {
         renderLiveTelemetryChart(r);
 
     } catch (err) {
-        el.contentBody.innerHTML = `<div class="error-state">Gagal memuat monitoring telemetri: ${err.message}</div>`;
+        el.contentBody.innerHTML = `<div class="error-state">${isEn ? 'Failed to load telemetry monitoring:' : 'Gagal memuat monitoring telemetri:'} ${err.message}</div>`;
     }
 }
 
@@ -1249,6 +1253,7 @@ async function renderLiveTelemetryChart(currentReading) {
     gradP3.addColorStop(0, 'rgba(245, 158, 11, 0.18)');
     gradP3.addColorStop(1, 'rgba(245, 158, 11, 0.0)');
 
+            const isEn = getLang() === 'en';
             const isMobileLive = window.innerWidth <= 640;
             state.charts.liveChart = new Chart(ctx, {
                 type: 'line',
@@ -1256,7 +1261,7 @@ async function renderLiveTelemetryChart(currentReading) {
                     labels,
                     datasets: [
                         {
-                            label: isMobileLive ? 'P1 Inti (°C)' : 'Probe 1 • Inti Kargo (°C)',
+                            label: isMobileLive ? (isEn ? 'P1 Core (°C)' : 'P1 Inti (°C)') : (isEn ? 'Probe 1 • Cargo Core (°C)' : 'Probe 1 • Inti Kargo (°C)'),
                             data: dataP1,
                             borderColor: '#0284c7',
                             backgroundColor: gradP1,
@@ -1270,7 +1275,7 @@ async function renderLiveTelemetryChart(currentReading) {
                             pointBorderWidth: 1.5
                         },
                         {
-                            label: isMobileLive ? 'P2 Buffer (°C)' : 'Probe 2 • Buffer Es / Tengah (°C)',
+                            label: isMobileLive ? 'P2 Buffer (°C)' : (isEn ? 'Probe 2 • Ice Buffer (°C)' : 'Probe 2 • Buffer Es / Tengah (°C)'),
                             data: dataP2,
                             borderColor: '#10b981',
                             backgroundColor: gradP2,
@@ -1284,7 +1289,7 @@ async function renderLiveTelemetryChart(currentReading) {
                             pointBorderWidth: 1.5
                         },
                         {
-                            label: isMobileLive ? 'P3 Pintu (°C)' : 'Probe 3 • Ambang Pintu (°C)',
+                            label: isMobileLive ? (isEn ? 'P3 Door (°C)' : 'P3 Pintu (°C)') : (isEn ? 'Probe 3 • Door Perimeter (°C)' : 'Probe 3 • Ambang Pintu (°C)'),
                             data: dataP3,
                             borderColor: '#f59e0b',
                             backgroundColor: gradP3,
@@ -1299,7 +1304,7 @@ async function renderLiveTelemetryChart(currentReading) {
                             pointBorderWidth: 1.5
                         },
                         {
-                            label: isMobileLive ? 'Batas (-18°C)' : 'Batas Kritis SNI / Codex (-18.0°C)',
+                            label: isMobileLive ? (isEn ? 'Limit (-18°C)' : 'Batas (-18°C)') : (isEn ? 'Critical Limit SNI/Codex (-18.0°C)' : 'Batas Kritis SNI / Codex (-18.0°C)'),
                             data: dataThreshold,
                             borderColor: '#ef4444',
                             borderDash: [6, 4],
@@ -1351,11 +1356,11 @@ async function renderLiveTelemetryChart(currentReading) {
                             callbacks: {
                                 label: function(context) {
                                     const val = context.parsed.y;
-                                    if (context.dataset.label.includes('Batas')) {
+                                    if (context.dataset.label.includes('Batas') || context.dataset.label.includes('Limit')) {
                                         return `🚨 ${context.dataset.label}: ${val.toFixed(1)}°C`;
                                     }
                                     const diff = val - (-18.0);
-                                    const status = diff > 0 ? `(⚠️ +${diff.toFixed(1)}°C Deviasi)` : `(✅ Aman)`;
+                                    const status = diff > 0 ? (isEn ? `(⚠️ +${diff.toFixed(1)}°C Excursion)` : `(⚠️ +${diff.toFixed(1)}°C Deviasi)`) : (isEn ? `(✅ Safe)` : `(✅ Aman)`);
                                     return `${context.dataset.label}: ${val !== null ? val.toFixed(1) : '--'}°C ${status}`;
                                 }
                             }
@@ -1397,7 +1402,8 @@ async function renderLiveTelemetryChart(currentReading) {
 // VIEW 3: SHIPMENTS
 // -------------------------------------------------------------
 async function renderShipmentsView() {
-    el.contentBody.innerHTML = `<div class="loading-state">Memuat data pengiriman...</div>`;
+    const isEn = getLang() === 'en';
+    el.contentBody.innerHTML = `<div class="loading-state">${isEn ? 'Loading shipment directory...' : 'Memuat data pengiriman...'}</div>`;
     try {
         const res = await api.getShipments();
         const shipments = res.shipments || [];
@@ -1405,44 +1411,44 @@ async function renderShipmentsView() {
         el.contentBody.innerHTML = `
             <div class="panel">
                 <div class="panel-header">
-                    <h2 class="panel-title">${icons.package} Daftar Pengiriman Karantina</h2>
-                    <button class="btn btn-primary" id="btn-create-shipment">${icons.plus} Tambah Kargo</button>
+                    <h2 class="panel-title">${icons.package} ${isEn ? 'Quarantine Shipment Directory' : 'Daftar Pengiriman Karantina'}</h2>
+                    <button class="btn btn-primary" id="btn-create-shipment">${icons.plus} ${isEn ? 'Add Cargo' : 'Tambah Kargo'}</button>
                 </div>
                 <div class="table-wrapper">
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>ID Kargo</th>
-                                <th>Perangkat</th>
-                                <th>Komoditas</th>
-                                <th>Asal</th>
-                                <th>Tujuan</th>
-                                <th>Batas Suhu</th>
-                                <th>Status</th>
-                                <th>Data Masuk</th>
-                                <th>Aksi</th>
+                                <th>${isEn ? 'Cargo ID' : 'ID Kargo'}</th>
+                                <th>${isEn ? 'Device' : 'Perangkat'}</th>
+                                <th>${isEn ? 'Commodity' : 'Komoditas'}</th>
+                                <th>${isEn ? 'Origin' : 'Asal'}</th>
+                                <th>${isEn ? 'Destination' : 'Tujuan'}</th>
+                                <th>${isEn ? 'Temp Limit' : 'Batas Suhu'}</th>
+                                <th>${isEn ? 'Status' : 'Status'}</th>
+                                <th>${isEn ? 'Readings' : 'Data Masuk'}</th>
+                                <th>${isEn ? 'Action' : 'Aksi'}</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${shipments.length > 0 ? shipments.map(s => `
                                 <tr>
                                     <td class="mono-cell" style="font-weight: 700; color: var(--ice-blue);">${s.id}</td>
-                                    <td><span class="mono-cell">${s.device_id || 'Belum Dihubungkan'}</span></td>
+                                    <td><span class="mono-cell">${s.device_id || (isEn ? 'Not Paired' : 'Belum Dihubungkan')}</span></td>
                                     <td><strong>${formatCommodityName(s.commodity)}</strong></td>
                                     <td>${s.origin || '-'}</td>
                                     <td>${s.destination || '-'}</td>
                                     <td><span class="mono-cell">${s.temp_min}°C ~ ${s.temp_max}°C</span></td>
-                                    <td><span class="status-pill ${s.status === 'active' ? 'NORMAL' : 'CAUTION'}">${s.status === 'active' ? 'AKTIF' : s.status}</span></td>
-                                    <td><span class="mono-cell">${s.total_readings || 0} data</span></td>
+                                    <td><span class="status-pill ${s.status === 'active' ? 'NORMAL' : 'CAUTION'}">${s.status === 'active' ? (isEn ? 'ACTIVE' : 'AKTIF') : s.status}</span></td>
+                                    <td><span class="mono-cell">${s.total_readings || 0} ${isEn ? 'records' : 'data'}</span></td>
                                     <td>
                                         <div style="display: flex; gap: 6px;">
-                                            <button class="btn btn-primary btn-sm btn-gps-shipment" data-id="${s.id}">${icons.map} Peta GPS</button>
-                                            <button class="btn btn-secondary btn-sm btn-dossier" data-id="${s.id}">Laporan</button>
-                                            <button class="btn btn-danger btn-sm btn-delete-shipment" data-id="${s.id}" title="Hapus Kargo">${icons.trash} Hapus</button>
+                                            <button class="btn btn-primary btn-sm btn-gps-shipment" data-id="${s.id}">${icons.map} ${isEn ? 'GPS Map' : 'Peta GPS'}</button>
+                                            <button class="btn btn-secondary btn-sm btn-dossier" data-id="${s.id}">${isEn ? 'Report' : 'Laporan'}</button>
+                                            <button class="btn btn-danger btn-sm btn-delete-shipment" data-id="${s.id}" title="${isEn ? 'Delete Cargo' : 'Hapus Kargo'}">${icons.trash} ${isEn ? 'Delete' : 'Hapus'}</button>
                                         </div>
                                     </td>
                                 </tr>
-                            `).join('') : `<tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Belum ada data pengiriman terdaftar. Klik tombol Tambah Kargo untuk mendaftarkan kargo.</td></tr>`}
+                            `).join('') : `<tr><td colspan="9" style="text-align: center; color: var(--text-muted);">${isEn ? 'No shipments registered. Click Add Cargo to register a new shipment.' : 'Belum ada data pengiriman terdaftar. Klik tombol Tambah Kargo untuk mendaftarkan kargo.'}</td></tr>`}
                         </tbody>
                     </table>
                 </div>
@@ -1464,67 +1470,68 @@ async function renderShipmentsView() {
         document.querySelectorAll('.btn-delete-shipment').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const id = btn.dataset.id;
-                if (!confirm(`Konfirmasi: Hapus data pengiriman ${id}?`)) return;
+                if (!confirm(isEn ? `Confirm: Delete shipment ${id}?` : `Konfirmasi: Hapus data pengiriman ${id}?`)) return;
                 try {
                     await api.deleteShipment(id);
                     if (state.selectedShipmentId === id) state.selectedShipmentId = null;
-                    showToast(`Data pengiriman ${id} berhasil dihapus`, 'success');
+                    showToast(isEn ? `Shipment ${id} successfully deleted` : `Data pengiriman ${id} berhasil dihapus`, 'success');
                     renderShipmentsView();
                 } catch (e) {
-                    showToast(`Gagal menghapus pengiriman: ${e.message}`, 'error');
+                    showToast(isEn ? `Failed to delete shipment: ${e.message}` : `Gagal menghapus pengiriman: ${e.message}`, 'error');
                 }
             });
         });
     } catch (err) {
-        el.contentBody.innerHTML = `<div class="error-state">Gagal memuat kargo: ${err.message}</div>`;
+        el.contentBody.innerHTML = `<div class="error-state">${isEn ? 'Failed to load cargo:' : 'Gagal memuat kargo:'} ${err.message}</div>`;
     }
 }
 
 function showCreateShipmentModal() {
+    const isEn = getLang() === 'en';
     const knownDevices = state.devices.length > 0 
         ? state.devices 
         : [{ id: 'QGUARD-001', name: 'Unit QGUARD-001' }];
 
     const deviceOptionsHtml = knownDevices.map(d => `<option value="${d.id}">${d.name ? `${d.id} - ${d.name}` : d.id}</option>`).join('');
 
-    openModal('Tambah Pengiriman Baru', `
+    openModal(isEn ? 'Add New Shipment' : 'Tambah Pengiriman Baru', `
         <form id="form-create-shipment">
             <div class="form-grid">
                 <div class="form-group">
-                    <label>ID Pengiriman (Opsional)</label>
-                    <input type="text" id="new-shipment-id" class="form-control" placeholder="Contoh: SHP-2026-001" />
+                    <label>${isEn ? 'Shipment ID (Optional)' : 'ID Pengiriman (Opsional)'}</label>
+                    <input type="text" id="new-shipment-id" class="form-control" placeholder="${isEn ? 'e.g. SHP-2026-001' : 'Contoh: SHP-2026-001'}" />
                 </div>
                 <div class="form-group">
-                    <label>ID Perangkat ESP32 <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">(Pilih / Ketik ID Baru)</span></label>
-                    <input type="text" id="new-shipment-device" list="known-devices-list" class="form-control" value="${state.selectedDeviceId || 'QGUARD-001'}" placeholder="Pilih atau ketik ID misal QGUARD-002" required autocomplete="off" />
+                    <label>${isEn ? 'ESP32 Device ID' : 'ID Perangkat ESP32'} <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">(${isEn ? 'Select / Type New ID' : 'Pilih / Ketik ID Baru'})</span></label>
+                    <input type="text" id="new-shipment-device" list="known-devices-list" class="form-control" value="${state.selectedDeviceId || 'QGUARD-001'}" placeholder="${isEn ? 'Select or type ID e.g. QGUARD-002' : 'Pilih atau ketik ID misal QGUARD-002'}" required autocomplete="off" />
                     <datalist id="known-devices-list">
                         ${deviceOptionsHtml}
                     </datalist>
                 </div>
                 <div class="form-group">
-                    <label>Jenis Komoditas</label>
-                    <input type="text" id="new-shipment-commodity" class="form-control" placeholder="Contoh: Ikan Tuna Beku / Daging" required />
+                    <label>${isEn ? 'Commodity Type' : 'Jenis Komoditas'}</label>
+                    <input type="text" id="new-shipment-commodity" class="form-control" placeholder="${isEn ? 'e.g. Frozen Tuna / Beef' : 'Contoh: Ikan Tuna Beku / Daging'}" required />
                 </div>
                 <div class="form-group">
-                    <label>Pelabuhan Asal</label>
-                    <input type="text" id="new-shipment-origin" class="form-control" placeholder="Contoh: Pelabuhan Bitung" required />
+                    <label>${isEn ? 'Origin Port' : 'Pelabuhan Asal'}</label>
+                    <input type="text" id="new-shipment-origin" class="form-control" placeholder="${isEn ? 'e.g. Bitung Port' : 'Contoh: Pelabuhan Bitung'}" required />
                 </div>
                 <div class="form-group">
-                    <label>Tujuan Karantina</label>
-                    <input type="text" id="new-shipment-dest" class="form-control" placeholder="Contoh: Tanjung Priok, Jakarta" required />
+                    <label>${isEn ? 'Quarantine Destination' : 'Tujuan Karantina'}</label>
+                    <input type="text" id="new-shipment-dest" class="form-control" placeholder="${isEn ? 'e.g. Tanjung Priok, Jakarta' : 'Contoh: Tanjung Priok, Jakarta'}" required />
                 </div>
                 <div class="form-group">
-                    <label>Suhu Minimum (°C)</label>
+                    <label>${isEn ? 'Minimum Temperature (°C)' : 'Suhu Minimum (°C)'}</label>
                     <input type="number" id="new-shipment-min" class="form-control" value="-25.0" step="0.5" required />
                 </div>
                 <div class="form-group">
-                    <label>Suhu Maksimum (°C)</label>
+                    <label>${isEn ? 'Maximum Temperature (°C)' : 'Suhu Maksimum (°C)'}</label>
                     <input type="number" id="new-shipment-max" class="form-control" value="-18.0" step="0.5" required />
                 </div>
             </div>
             <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
-                <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-close').click()">Batal</button>
-                <button type="submit" class="btn btn-primary">Simpan Data</button>
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-close').click()">${isEn ? 'Cancel' : 'Batal'}</button>
+                <button type="submit" class="btn btn-primary">${isEn ? 'Save Cargo' : 'Simpan Data'}</button>
             </div>
         </form>
     `);
@@ -1546,7 +1553,7 @@ function showCreateShipmentModal() {
             };
 
             await api.createShipment(payload);
-            showToast('Pengiriman kargo berhasil dibuat', 'success');
+            showToast(isEn ? 'Cargo shipment successfully created' : 'Pengiriman kargo berhasil dibuat', 'success');
             closeModal();
 
             // Refresh device list and render view
@@ -1560,7 +1567,7 @@ function showCreateShipmentModal() {
 
             renderShipmentsView();
         } catch (err) {
-            showToast(`Gagal membuat pengiriman: ${err.message}`, 'error');
+            showToast(isEn ? `Failed to create shipment: ${err.message}` : `Gagal membuat pengiriman: ${err.message}`, 'error');
         }
     });
 }
@@ -1822,7 +1829,8 @@ function smoothGlideVehicle(targetLat, targetLon, targetHeading = null, duration
 
 // Main View Renderer for GPS Voyage Map
 async function renderGpsView() {
-    el.contentBody.innerHTML = `<div class="loading-state">Memuat data posisi & rute GPS pelayaran armada...</div>`;
+    const isEn = getLang() === 'en';
+    el.contentBody.innerHTML = `<div class="loading-state">${isEn ? 'Loading fleet GPS route & location data...' : 'Memuat data posisi & rute GPS pelayaran armada...'}</div>`;
     
     try {
         const [latestRes, shipmentsRes] = await Promise.all([
@@ -1871,74 +1879,74 @@ async function renderGpsView() {
         const isFix3D = (latest?.gps_fix_status === 'FIX_3D' || latest?.gps_fix_status === '3D_FIX');
         const fixBadgeText = isFix3D 
             ? '● 3D Fix' 
-            : (hasLiveFix ? '● 2D Fix' : '○ Mencari Sinyal');
+            : (hasLiveFix ? '● 2D Fix' : (isEn ? '○ Searching Signal' : '○ Mencari Sinyal'));
         const fixBadgeClass = (isFix3D || hasLiveFix) ? 'var(--status-normal)' : '#f59e0b';
 
         const coordsText = hasLiveFix 
             ? `${latestLat.toFixed(5)}, ${latestLon.toFixed(5)}` 
-            : (hasRealGps ? `${validGpsReadings[validGpsReadings.length - 1].latitude.toFixed(5)}, ${validGpsReadings[validGpsReadings.length - 1].longitude.toFixed(5)}` : 'Mencari Sinyal');
+            : (hasRealGps ? `${validGpsReadings[validGpsReadings.length - 1].latitude.toFixed(5)}, ${validGpsReadings[validGpsReadings.length - 1].longitude.toFixed(5)}` : (isEn ? 'Searching Signal' : 'Mencari Sinyal'));
 
         const tempVal = latest?.temperature_probe_2 !== null && latest?.temperature_probe_2 !== undefined
-            ? `${Number(latest.temperature_probe_2).toFixed(1)}°C (Inti)`
+            ? `${Number(latest.temperature_probe_2).toFixed(1)}°C ${isEn ? '(Core)' : '(Inti)'}`
             : (latest?.temperature_probe_1 !== null && latest?.temperature_probe_1 !== undefined 
                 ? `${Number(latest.temperature_probe_1).toFixed(1)}°C` 
                 : '--');
 
         const pointCountText = hasRealGps 
-            ? `${validGpsReadings.length} Titik` 
-            : '0 Titik';
+            ? `${validGpsReadings.length} ${isEn ? 'Points' : 'Titik'}` 
+            : `0 ${isEn ? 'Points' : 'Titik'}`;
 
         el.contentBody.innerHTML = `
             <div class="panel">
                 <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
                     <div>
-                        <h2 class="panel-title">${icons.map} Peta Pelayaran & GPS</h2>
+                        <h2 class="panel-title">${icons.map} ${isEn ? 'Voyage Route & GPS Map' : 'Peta Pelayaran & GPS'}</h2>
                         <span style="font-size: 12px; color: var(--text-muted)">
-                            ${hasRealGps ? 'Monitoring Rute Armada • Unit ' + state.selectedDeviceId : 'Menunggu Sinyal Satelit GPS • Unit ' + state.selectedDeviceId}
+                            ${hasRealGps ? (isEn ? 'Fleet Route Monitoring • Unit ' + state.selectedDeviceId : 'Monitoring Rute Armada • Unit ' + state.selectedDeviceId) : (isEn ? 'Awaiting GPS Satellite Signal • Unit ' + state.selectedDeviceId : 'Menunggu Sinyal Satelit GPS • Unit ' + state.selectedDeviceId)}
                         </span>
                     </div>
 
                     <!-- Toolbar Kontrol Peta & Ikon Kendaraan -->
                     <div class="panel-actions" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
                         <!-- Pemilih Ikon Kendaraan -->
-                        <div class="vehicle-selector-group" title="Pilih bentuk representasi armada">
+                        <div class="vehicle-selector-group" title="${isEn ? 'Select fleet icon representation' : 'Pilih bentuk representasi armada'}">
                             <button class="vehicle-btn ${gpsLive.vehicleType === 'truck' ? 'active' : ''}" data-vehicle="truck">
-                                ${icons.truck} Truk
+                                ${icons.truck} ${isEn ? 'Truck' : 'Truk'}
                             </button>
                             <button class="vehicle-btn ${gpsLive.vehicleType === 'ship' ? 'active' : ''}" data-vehicle="ship">
-                                ${icons.ship} Kapal
+                                ${icons.ship} ${isEn ? 'Vessel' : 'Kapal'}
                             </button>
                             <button class="vehicle-btn ${gpsLive.vehicleType === 'beacon' ? 'active' : ''}" data-vehicle="beacon">
-                                ${icons.mapPin} Pin
+                                ${icons.mapPin} ${isEn ? 'Pin' : 'Pin'}
                             </button>
                         </div>
 
                         <!-- Filter Kargo -->
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <select id="gps-shipment-select" class="form-control" style="padding: 4px 8px; font-size: 12px; height: 32px;">
-                                <option value="" ${!state.selectedShipmentId ? 'selected' : ''}>Semua Data Unit (${state.selectedDeviceId})</option>
+                                <option value="" ${!state.selectedShipmentId ? 'selected' : ''}>${isEn ? `All Unit Data (${state.selectedDeviceId})` : `Semua Data Unit (${state.selectedDeviceId})`}</option>
                                 ${shipments.map(s => `<option value="${s.id}" ${state.selectedShipmentId === s.id ? 'selected' : ''}>${s.id} - ${formatCommodityName(s.commodity)}</option>`).join('')}
                             </select>
                         </div>
 
                         <!-- Auto-Follow Camera Toggle -->
-                        <button class="btn ${gpsLive.autoFollow ? 'btn-primary' : 'btn-secondary'} btn-sm" id="btn-toggle-autofollow" title="Kamera otomatis mengikuti posisi armada">
-                            ${icons.compass} <span id="autofollow-text">${gpsLive.autoFollow ? 'Ikuti: ON' : 'Ikuti: OFF'}</span>
+                        <button class="btn ${gpsLive.autoFollow ? 'btn-primary' : 'btn-secondary'} btn-sm" id="btn-toggle-autofollow" title="${isEn ? 'Camera automatically tracks fleet position' : 'Kamera otomatis mengikuti posisi armada'}">
+                            ${icons.compass} <span id="autofollow-text">${gpsLive.autoFollow ? (isEn ? 'Follow: ON' : 'Ikuti: ON') : (isEn ? 'Follow: OFF' : 'Ikuti: OFF')}</span>
                         </button>
 
                         <!-- Live Demo Simulation Toggle -->
-                        <button class="btn btn-secondary btn-sm" id="btn-toggle-simulation" title="Uji animasi pergerakan rute secara langsung" style="border-color: #f59e0b; color: #b45309; font-weight: 600;">
-                            <span id="sim-icon">🚀</span> <span id="sim-text">Demo Rute</span>
+                        <button class="btn btn-secondary btn-sm" id="btn-toggle-simulation" title="${isEn ? 'Test route simulation in real-time' : 'Uji animasi pergerakan rute secara langsung'}" style="border-color: #f59e0b; color: #b45309; font-weight: 600;">
+                            <span id="sim-icon">🚀</span> <span id="sim-text">${isEn ? 'Route Demo' : 'Demo Rute'}</span>
                         </button>
 
-                        <button class="btn btn-secondary btn-sm" id="btn-recenter-map" title="Pusatkan kamera ke lokasi armada saat ini">
-                            ${icons.gps} Pusatkan
+                        <button class="btn btn-secondary btn-sm" id="btn-recenter-map" title="${isEn ? 'Center map to current position' : 'Pusatkan kamera ke lokasi armada saat ini'}">
+                            ${icons.gps} ${isEn ? 'Recenter' : 'Pusatkan'}
                         </button>
-                        <button class="btn btn-secondary btn-sm" id="btn-fit-route" title="Lihat seluruh jalur rute pengiriman">
-                            ${icons.map} Seluruh Rute
+                        <button class="btn btn-secondary btn-sm" id="btn-fit-route" title="${isEn ? 'View entire shipment route' : 'Lihat seluruh jalur rute pengiriman'}">
+                            ${icons.map} ${isEn ? 'Full Route' : 'Seluruh Rute'}
                         </button>
-                        <button class="btn btn-secondary btn-sm" id="btn-toggle-tiles" title="Ganti antara peta jalan dan citra satelit">
-                            <span id="layer-type-label">Peta Satelit</span>
+                        <button class="btn btn-secondary btn-sm" id="btn-toggle-tiles" title="${isEn ? 'Toggle street map and satellite imagery' : 'Ganti antara peta jalan dan citra satelit'}">
+                            <span id="layer-type-label">${isEn ? 'Satellite Map' : 'Peta Satelit'}</span>
                         </button>
                     </div>
                 </div>
@@ -1948,12 +1956,12 @@ async function renderGpsView() {
                         <div>
                             <strong style="color: var(--ice-blue); font-size: 13px;">${activeShipment.id}</strong> — <span style="font-weight: 600;">${formatCommodityName(activeShipment.commodity)}</span>
                             <div style="color: var(--text-secondary); margin-top: 2px;">
-                                <span>${activeShipment.origin || 'Pelabuhan Asal'}</span> → <span>${activeShipment.destination || 'Depot Karantina'}</span>
-                                <span style="margin-left: 12px; color: var(--text-muted); font-family: monospace;">Batas Regulasi: ${activeShipment.temp_min}°C s/d ${activeShipment.temp_max}°C</span>
+                                <span>${activeShipment.origin || (isEn ? 'Origin Port' : 'Pelabuhan Asal')}</span> → <span>${activeShipment.destination || (isEn ? 'Quarantine Depot' : 'Depot Karantina')}</span>
+                                <span style="margin-left: 12px; color: var(--text-muted); font-family: monospace;">${isEn ? 'Regulatory Limit: ' : 'Batas Regulasi: '}${activeShipment.temp_min}°C ${isEn ? 'to' : 's/d'} ${activeShipment.temp_max}°C</span>
                             </div>
                         </div>
                         <div style="display: flex; gap: 8px; align-items: center;">
-                            <span class="status-pill ${activeShipment.status === 'active' ? 'NORMAL' : 'CAUTION'}">${activeShipment.status === 'active' ? 'PELAYARAN AKTIF' : activeShipment.status}</span>
+                            <span class="status-pill ${activeShipment.status === 'active' ? 'NORMAL' : 'CAUTION'}">${activeShipment.status === 'active' ? (isEn ? 'VOYAGE ACTIVE' : 'PELAYARAN AKTIF') : activeShipment.status}</span>
                         </div>
                     </div>
                 ` : ''}
@@ -1967,21 +1975,21 @@ async function renderGpsView() {
                         <div class="map-hud-left">
                             <div class="map-hud-pill ${hasLiveFix ? 'live-active' : ''}" id="map-live-pill">
                                 <span class="map-live-dot" id="map-live-dot"></span>
-                                <span id="map-live-title">${hasLiveFix ? 'GPS AKTIF' : 'MENCARI SINYAL'}</span>
+                                <span id="map-live-title">${hasLiveFix ? (isEn ? 'GPS ACTIVE' : 'GPS AKTIF') : (isEn ? 'SEARCHING SIGNAL' : 'MENCARI SINYAL')}</span>
                             </div>
                             <div class="map-hud-chip">
-                                KECEPATAN: <strong id="hud-speed-val">0.0 km/h</strong>
+                                ${isEn ? 'SPEED:' : 'KECEPATAN:'} <strong id="hud-speed-val">0.0 km/h</strong>
                             </div>
                             <div class="map-hud-chip">
-                                HALUAN: <strong id="hud-heading-val">000° (Utara)</strong>
+                                ${isEn ? 'HEADING:' : 'HALUAN:'} <strong id="hud-heading-val">${isEn ? '000° (North)' : '000° (Utara)'}</strong>
                             </div>
                         </div>
                         <div class="map-hud-right">
                             <div class="map-hud-chip">
-                                SUHU INTI: <strong id="hud-temp-val" style="color: #10b981;">${tempVal}</strong>
+                                ${isEn ? 'CORE TEMP:' : 'SUHU INTI:'} <strong id="hud-temp-val" style="color: #10b981;">${tempVal}</strong>
                             </div>
                             <div class="map-hud-chip" id="hud-mode-chip">
-                                MODA: <strong id="hud-mode-val">${gpsLive.vehicleType === 'ship' ? 'KAPAL' : (gpsLive.vehicleType === 'beacon' ? 'BEACON' : 'TRUK')}</strong>
+                                ${isEn ? 'MODE:' : 'MODA:'} <strong id="hud-mode-val">${gpsLive.vehicleType === 'ship' ? (isEn ? 'VESSEL' : 'KAPAL') : (gpsLive.vehicleType === 'beacon' ? 'BEACON' : (isEn ? 'TRUCK' : 'TRUK'))}</strong>
                             </div>
                         </div>
                     </div>
@@ -1990,27 +1998,27 @@ async function renderGpsView() {
                 <!-- Detail Telemetri Statistik Bar Bawah -->
                 <div style="margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: var(--bg-surface-elevated); padding: 14px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 13px;">
                     <div>
-                        <span style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 2px;">KOORDINAT TERKINI</span>
+                        <span style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 2px;">${isEn ? 'LATEST COORDINATES' : 'KOORDINAT TERKINI'}</span>
                         <strong class="mono-cell" id="gps-stat-coords" style="color: var(--ice-blue);">${coordsText}</strong>
                     </div>
                     <div>
-                        <span style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 2px;">STATUS GPS</span>
+                        <span style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 2px;">${isEn ? 'GPS STATUS' : 'STATUS GPS'}</span>
                         <strong id="gps-stat-status" style="color: ${fixBadgeClass}; display: inline-flex; align-items: center; gap: 4px;">${fixBadgeText}</strong>
                     </div>
                     <div>
-                        <span style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 2px;">SUHU PADA POSISI INI</span>
+                        <span style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 2px;">${isEn ? 'TEMPERATURE AT THIS POSITION' : 'SUHU PADA POSISI INI'}</span>
                         <strong id="gps-stat-temp" style="color: #10b981;">${tempVal}</strong>
                     </div>
                     <div>
-                        <span style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 2px;">TOTAL TITIK LACAK</span>
+                        <span style="color: var(--text-muted); font-size: 11px; display: block; margin-bottom: 2px;">${isEn ? 'TOTAL TRACK POINTS' : 'TOTAL TITIK LACAK'}</span>
                         <strong id="gps-stat-points">${pointCountText}</strong>
                     </div>
                 </div>
 
                 <div style="margin-top: 12px; display: flex; gap: 20px; font-size: 12px; color: var(--text-secondary); align-items: center; flex-wrap: wrap;">
-                    <div><span style="color: #10b981; font-size: 16px;">●</span> Normal</div>
-                    <div><span style="color: #ef4444; font-size: 16px;">●</span> Penyimpangan Suhu</div>
-                    <div style="display: inline-flex; align-items: center; gap: 4px;"><span style="color: var(--primary-blue); display: inline-flex;">${icons.mapPin}</span> Posisi Terkini</div>
+                    <div><span style="color: #10b981; font-size: 16px;">●</span> ${isEn ? 'Normal' : 'Normal'}</div>
+                    <div><span style="color: #ef4444; font-size: 16px;">●</span> ${isEn ? 'Temperature Excursion' : 'Penyimpangan Suhu'}</div>
+                    <div style="display: inline-flex; align-items: center; gap: 4px;"><span style="color: var(--primary-blue); display: inline-flex;">${icons.mapPin}</span> ${isEn ? 'Current Position' : 'Posisi Terkini'}</div>
                 </div>
             </div>
         `;
@@ -2032,9 +2040,9 @@ async function renderGpsView() {
                 updateVehicleMarkerIcon();
                 const hudModeVal = document.getElementById('hud-mode-val');
                 if (hudModeVal) {
-                    hudModeVal.innerText = vType === 'ship' ? 'KAPAL' : (vType === 'beacon' ? 'BEACON' : 'TRUK');
+                    hudModeVal.innerText = vType === 'ship' ? (isEn ? 'VESSEL' : 'KAPAL') : (vType === 'beacon' ? 'BEACON' : (isEn ? 'TRUCK' : 'TRUK'));
                 }
-                showToast(`Ikon armada: ${vType === 'ship' ? 'Kapal' : (vType === 'beacon' ? 'Pin' : 'Truk')}`, 'info');
+                showToast(isEn ? `Fleet icon: ${vType === 'ship' ? 'Vessel' : (vType === 'beacon' ? 'Pin' : 'Truck')}` : `Ikon armada: ${vType === 'ship' ? 'Kapal' : (vType === 'beacon' ? 'Pin' : 'Truk')}`, 'info');
             });
         });
 
@@ -2045,8 +2053,8 @@ async function renderGpsView() {
             gpsLive.autoFollow = !gpsLive.autoFollow;
             btnAutoFollow.classList.toggle('btn-primary', gpsLive.autoFollow);
             btnAutoFollow.classList.toggle('btn-secondary', !gpsLive.autoFollow);
-            if (autoFollowText) autoFollowText.innerText = gpsLive.autoFollow ? 'Ikuti: ON' : 'Ikuti: OFF';
-            showToast(`Mode ikuti armada: ${gpsLive.autoFollow ? 'ON' : 'OFF'}`, 'info');
+            if (autoFollowText) autoFollowText.innerText = gpsLive.autoFollow ? (isEn ? 'Follow: ON' : 'Ikuti: ON') : (isEn ? 'Follow: OFF' : 'Ikuti: OFF');
+            showToast(isEn ? `Fleet follow mode: ${gpsLive.autoFollow ? 'ON' : 'OFF'}` : `Mode ikuti armada: ${gpsLive.autoFollow ? 'ON' : 'OFF'}`, 'info');
         });
 
         // Pasang Event Listener Live Demo Simulation
@@ -2339,19 +2347,21 @@ function toggleGpsSimulation() {
         if (gpsLive.simTimer) clearInterval(gpsLive.simTimer);
         gpsLive.simTimer = null;
 
+        const isEn = getLang() === 'en';
         if (btnSim) {
             btnSim.style.background = '';
             btnSim.style.color = '#b45309';
         }
         if (simIcon) simIcon.innerText = '🚀';
-        if (simText) simText.innerText = 'Demo Rute';
+        if (simText) simText.innerText = isEn ? 'Route Demo' : 'Demo Rute';
         if (livePill) livePill.className = 'map-hud-pill';
         if (liveDot) liveDot.className = 'map-live-dot';
-        if (liveTitle) liveTitle.innerText = 'GPS AKTIF';
+        if (liveTitle) liveTitle.innerText = isEn ? 'GPS ACTIVE' : 'GPS AKTIF';
 
-        showToast('Demo simulasi dinonaktifkan', 'info');
+        showToast(isEn ? 'Simulation demo disabled' : 'Demo simulasi dinonaktifkan', 'info');
     } else {
         // Nyalakan simulasi
+        const isEn = getLang() === 'en';
         gpsLive.isSimulating = true;
         gpsLive.simIndex = 0;
 
@@ -2371,12 +2381,12 @@ function toggleGpsSimulation() {
             btnSim.style.color = '#ffffff';
         }
         if (simIcon) simIcon.innerText = '⏸️';
-        if (simText) simText.innerText = 'Hentikan Demo';
+        if (simText) simText.innerText = isEn ? 'Stop Demo' : 'Hentikan Demo';
         if (livePill) livePill.className = 'map-hud-pill live-sim';
         if (liveDot) liveDot.className = 'map-live-dot sim-dot';
-        if (liveTitle) liveTitle.innerText = 'MODE SIMULASI';
+        if (liveTitle) liveTitle.innerText = isEn ? 'SIMULATION MODE' : 'MODE SIMULASI';
 
-        showToast('Demo rute simulasi aktif', 'success');
+        showToast(isEn ? 'Route simulation active' : 'Demo rute simulasi aktif', 'success');
 
         // Step generator simulasi tiap 2.6 detik
         gpsLive.simTimer = setInterval(() => {
@@ -2672,7 +2682,7 @@ async function renderRiskEngineView() {
             </div>
         `;
     } catch (err) {
-        el.contentBody.innerHTML = `<div class="error-state">Gagal mengevaluasi risiko: ${err.message}</div>`;
+        el.contentBody.innerHTML = `<div class="error-state">${isEn ? 'Failed to evaluate risk:' : 'Gagal mengevaluasi risiko:'} ${err.message}</div>`;
     }
 }
 
@@ -2680,7 +2690,8 @@ async function renderRiskEngineView() {
 // VIEW 6: ALERTS
 // -------------------------------------------------------------
 async function renderAlertsView() {
-    el.contentBody.innerHTML = `<div class="loading-state">Memuat riwayat insiden...</div>`;
+    const isEn = getLang() === 'en';
+    el.contentBody.innerHTML = `<div class="loading-state">${isEn ? 'Loading incident history...' : 'Memuat riwayat insiden...'}</div>`;
     try {
         const res = await api.getAlerts({ limit: 100 });
         const alerts = res.alerts || [];
@@ -2688,26 +2699,26 @@ async function renderAlertsView() {
         el.contentBody.innerHTML = `
             <div class="panel">
                 <div class="panel-header">
-                    <h2 class="panel-title">${icons.alertTriangle} Riwayat Peringatan & Insiden</h2>
-                    <span style="font-size: 12px; color: var(--text-muted);">Total: ${alerts.length} kejadian</span>
+                    <h2 class="panel-title">${icons.alertTriangle} ${isEn ? 'Alert & Incident History' : 'Riwayat Peringatan & Insiden'}</h2>
+                    <span style="font-size: 12px; color: var(--text-muted);">${isEn ? `Total: ${alerts.length} incidents` : `Total: ${alerts.length} kejadian`}</span>
                 </div>
                 <div class="table-wrapper">
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>Waktu Kejadian</th>
-                                <th>Perangkat</th>
-                                <th>Jenis Insiden</th>
-                                <th>Tingkat</th>
-                                <th>Deskripsi</th>
-                                <th>Status</th>
-                                <th>Aksi</th>
+                                <th>${isEn ? 'Timestamp' : 'Waktu Kejadian'}</th>
+                                <th>${isEn ? 'Device' : 'Perangkat'}</th>
+                                <th>${isEn ? 'Incident Type' : 'Jenis Insiden'}</th>
+                                <th>${isEn ? 'Severity' : 'Tingkat'}</th>
+                                <th>${isEn ? 'Description' : 'Deskripsi'}</th>
+                                <th>${isEn ? 'Status' : 'Status'}</th>
+                                <th>${isEn ? 'Action' : 'Aksi'}</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${alerts.length > 0 ? alerts.map(a => {
-                                const eventTypeMap = {
+                                const eventTypeMapId = {
                                     'TEMPERATURE_HIGH': 'Suhu Terlalu Tinggi',
                                     'TEMPERATURE_LOW': 'Suhu Terlalu Dingin',
                                     'SHOCK_EXCESSIVE': 'Guncangan Tinggi',
@@ -2716,34 +2727,55 @@ async function renderAlertsView() {
                                     'POWER_FAILURE': 'Daya Listrik Padam',
                                     'GPS_LOST': 'Sinyal GPS Hilang'
                                 };
-                                let friendlyDesc = (a.description || '')
-                                    .replace(/Temperature excursion high:/i, 'Suhu tinggi:')
-                                    .replace(/Temperature excursion low:/i, 'Suhu terlalu dingin:')
-                                    .replace(/threshold:/i, 'batas:')
-                                    .replace(/Excessive shock\/vibration detected:/i, 'Guncangan terdeteksi:')
-                                    .replace(/Door opened during voyage/i, 'Pintu kontainer terbuka saat perjalanan');
+                                const eventTypeMapEn = {
+                                    'TEMPERATURE_HIGH': 'High Temperature',
+                                    'TEMPERATURE_LOW': 'Low Temperature',
+                                    'SHOCK_EXCESSIVE': 'Excessive Shock',
+                                    'DOOR_OPEN': 'Door Opened',
+                                    'DOOR_TAMPER': 'Door Tamper',
+                                    'POWER_FAILURE': 'Power Failure',
+                                    'GPS_LOST': 'GPS Signal Lost'
+                                };
+                                const eventTypeMap = isEn ? eventTypeMapEn : eventTypeMapId;
+                                let friendlyDesc = (a.description || '');
+                                if (isEn) {
+                                    friendlyDesc = friendlyDesc
+                                        .replace(/Suhu tinggi:/i, 'High temperature:')
+                                        .replace(/Suhu terlalu dingin:/i, 'Low temperature:')
+                                        .replace(/batas:/i, 'threshold:')
+                                        .replace(/Guncangan terdeteksi:/i, 'Shock detected:')
+                                        .replace(/Pintu kontainer terbuka saat perjalanan/i, 'Container door opened during voyage');
+                                } else {
+                                    friendlyDesc = friendlyDesc
+                                        .replace(/Temperature excursion high:/i, 'Suhu tinggi:')
+                                        .replace(/Temperature excursion low:/i, 'Suhu terlalu dingin:')
+                                        .replace(/threshold:/i, 'batas:')
+                                        .replace(/Excessive shock\/vibration detected:/i, 'Guncangan terdeteksi:')
+                                        .replace(/Door opened during voyage/i, 'Pintu kontainer terbuka saat perjalanan');
+                                }
+                                const sevLabel = a.severity === 'CRITICAL' ? (isEn ? 'CRITICAL' : 'KRITIS') : (a.severity === 'WARNING' ? (isEn ? 'WARNING' : 'WASPADA') : 'NORMAL');
                                 return `
                                 <tr>
                                     <td class="mono-cell">#${a.id}</td>
                                     <td class="mono-cell" style="white-space: nowrap;">${formatTimestamp(a.created_at)}</td>
                                     <td><span class="mono-cell">${a.device_id}</span></td>
                                     <td><strong>${eventTypeMap[a.event_type] || a.event_type}</strong></td>
-                                    <td><span class="status-pill ${a.severity}">${a.severity === 'CRITICAL' ? 'KRITIS' : (a.severity === 'WARNING' ? 'WASPADA' : 'NORMAL')}</span></td>
+                                    <td><span class="status-pill ${a.severity}">${sevLabel}</span></td>
                                     <td>${friendlyDesc}</td>
                                     <td>
                                         ${a.acknowledged ? 
-                                            `<span style="color: var(--status-normal); font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">${icons.check} Dikonfirmasi (${a.acknowledged_by || 'admin'})</span>` : 
-                                            `<span style="color: var(--status-critical); font-size: 12px; font-weight: 600;">Belum Dikonfirmasi</span>`
+                                            `<span style="color: var(--status-normal); font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">${icons.check} ${isEn ? 'Acknowledged' : 'Dikonfirmasi'} (${a.acknowledged_by || 'admin'})</span>` : 
+                                            `<span style="color: var(--status-critical); font-size: 12px; font-weight: 600;">${isEn ? 'Unacknowledged' : 'Belum Dikonfirmasi'}</span>`
                                         }
                                     </td>
                                     <td>
                                         ${!a.acknowledged ? 
-                                            `<button class="btn btn-primary btn-sm btn-ack-alert" data-id="${a.id}">Konfirmasi Tindakan</button>` : 
-                                            `<span style="color: var(--text-muted); font-size: 12px;">Selesai</span>`
+                                            `<button class="btn btn-primary btn-sm btn-ack-alert" data-id="${a.id}">${isEn ? 'Acknowledge Action' : 'Konfirmasi Tindakan'}</button>` : 
+                                            `<span style="color: var(--text-muted); font-size: 12px;">${isEn ? 'Resolved' : 'Selesai'}</span>`
                                         }
                                     </td>
                                 </tr>
-                            `}).join('') : `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Tidak ada riwayat peringatan atau anomali.</td></tr>`}
+                            `}).join('') : `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">${isEn ? 'No alert history or anomalies found.' : 'Tidak ada riwayat peringatan atau anomali.'}</td></tr>`}
                         </tbody>
                     </table>
                 </div>
@@ -2755,15 +2787,15 @@ async function renderAlertsView() {
                 const id = btn.dataset.id;
                 try {
                     await api.acknowledgeAlert(id);
-                    showToast(`Peringatan #${id} berhasil dikonfirmasi`, 'success');
+                    showToast(isEn ? `Alert #${id} successfully acknowledged` : `Peringatan #${id} berhasil dikonfirmasi`, 'success');
                     renderAlertsView();
                 } catch (err) {
-                    showToast(`Gagal menandai: ${err.message}`, 'error');
+                    showToast(isEn ? `Failed to acknowledge: ${err.message}` : `Gagal menandai: ${err.message}`, 'error');
                 }
             });
         });
     } catch (err) {
-        el.contentBody.innerHTML = `<div class="error-state">Gagal memuat daftar peringatan: ${err.message}</div>`;
+        el.contentBody.innerHTML = `<div class="error-state">${isEn ? 'Failed to load alert list:' : 'Gagal memuat daftar peringatan:'} ${err.message}</div>`;
     }
 }
 
@@ -2771,7 +2803,8 @@ async function renderAlertsView() {
 // VIEW 7: AUDIT REPORTS
 // -------------------------------------------------------------
 async function renderReportsView() {
-    el.contentBody.innerHTML = `<div class="loading-state">Memuat laporan karantina...</div>`;
+    const isEn = getLang() === 'en';
+    el.contentBody.innerHTML = `<div class="loading-state">${isEn ? 'Loading quarantine report...' : 'Memuat laporan karantina...'}</div>`;
     try {
         const shipmentsRes = await api.getShipments().catch(() => ({ shipments: [] }));
         const shipments = shipmentsRes.shipments || [];
@@ -2792,15 +2825,16 @@ async function renderReportsView() {
             const avgT = temps.length > 0 ? (temps.reduce((a, b) => a + b, 0) / temps.length) : 0;
             const latestR = rList[0] || null;
             const isCrit = latestR && latestR.risk_level === 'CRITICAL';
+            const isWarn = latestR && (latestR.risk_level === 'WARNING' || latestR.risk_level === 'CAUTION');
 
             report = {
                 dossier_id: `DOSSIER-${state.selectedDeviceId}-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`,
                 report_generated_at: new Date().toISOString(),
                 shipment: {
                     id: activeShipment ? activeShipment.id : `UNIT-${state.selectedDeviceId}`,
-                    commodity: activeShipment ? formatCommodityName(activeShipment.commodity) : 'Kargo Transit ' + state.selectedDeviceId,
-                    origin: activeShipment ? activeShipment.origin : 'Pelabuhan Asal',
-                    destination: activeShipment ? activeShipment.destination : 'Depot Karantina',
+                    commodity: activeShipment ? formatCommodityName(activeShipment.commodity) : (isEn ? 'Transit Cargo ' : 'Kargo Transit ') + state.selectedDeviceId,
+                    origin: activeShipment ? activeShipment.origin : (isEn ? 'Origin Port' : 'Pelabuhan Asal'),
+                    destination: activeShipment ? activeShipment.destination : (isEn ? 'Quarantine Depot' : 'Depot Karantina'),
                     temp_min: activeShipment ? activeShipment.temp_min : 0.0,
                     temp_max: activeShipment ? activeShipment.temp_max : 4.0
                 },
@@ -2821,8 +2855,16 @@ async function renderReportsView() {
                 },
                 quarantine_disposition: {
                     verdict: isCrit ? 'HOLD_LAB_TEST' : (isWarn ? 'CONDITIONAL_INSPECTION' : 'PASSED'),
-                    reason: isCrit ? 'Terdeteksi deviasi suhu kargo kritis. Memerlukan pengujian fisik dan laboratorium.' : (isWarn ? 'Penyimpangan minor terdeteksi. Disarankan inspeksi fisik sebelum rilis.' : 'Suhu kargo dan kondisi fisik memenuhi standar rantai dingin.'),
-                    recommended_action: isCrit ? 'Tahan kargo untuk pemeriksaan sampling laboratorium.' : (isWarn ? 'Lakukan inspeksi fisik dan uji organoleptik.' : 'Terbitkan Sertifikat Pelepasan Karantina Resmi.')
+                    reason: isCrit 
+                        ? (isEn ? 'Critical cargo temperature deviation detected. Requires physical and laboratory inspection.' : 'Terdeteksi deviasi suhu kargo kritis. Memerlukan pengujian fisik dan laboratorium.')
+                        : (isWarn 
+                            ? (isEn ? 'Minor temperature excursion detected. Physical inspection advised before clearance.' : 'Penyimpangan minor terdeteksi. Disarankan inspeksi fisik sebelum rilis.')
+                            : (isEn ? 'Cargo temperature and physical integrity meet cold-chain compliance.' : 'Suhu kargo dan kondisi fisik memenuhi standar rantai dingin.')),
+                    recommended_action: isCrit 
+                        ? (isEn ? 'Hold cargo for laboratory sampling and assay.' : 'Tahan kargo untuk pemeriksaan sampling laboratorium.')
+                        : (isWarn 
+                            ? (isEn ? 'Perform physical inspection and organoleptic test.' : 'Lakukan inspeksi fisik dan uji organoleptik.')
+                            : (isEn ? 'Issue Official Quarantine Release Certificate.' : 'Terbitkan Sertifikat Pelepasan Karantina Resmi.'))
                 }
             };
         }
@@ -2834,8 +2876,8 @@ async function renderReportsView() {
         const isInspection = qv === 'CONDITIONAL_INSPECTION' || qv === 'HOLD_INSPECTION';
 
         const verdictLabel = isPassed 
-            ? 'DISETUJUI (PELEPASAN)' 
-            : (isHoldLab ? 'PENAHANAN & UJI LAB' : (isInspection ? 'INSPEKSI FISIK (HOLD)' : qv));
+            ? (isEn ? 'APPROVED (RELEASE)' : 'DISETUJUI (PELEPASAN)') 
+            : (isHoldLab ? (isEn ? 'DETENTION & LAB ASSAY' : 'PENAHANAN & UJI LAB') : (isInspection ? (isEn ? 'PHYSICAL INSPECTION (HOLD)' : 'INSPEKSI FISIK (HOLD)') : qv));
 
         const reportCardClass = isPassed ? 'card-success' : (isInspection ? 'card-warning' : 'card-danger');
 
@@ -2843,21 +2885,21 @@ async function renderReportsView() {
             <div class="panel">
                 <div class="panel-header">
                     <div>
-                        <h2 class="panel-title">${icons.clipboard} Laporan Pelepasan Karantina</h2>
-                        <span class="mono-cell" style="font-size: 11px; color: var(--text-muted);">${report.dossier_id} • Dibuat: ${formatTimestamp(report.report_generated_at)}</span>
+                        <h2 class="panel-title">${icons.clipboard} ${isEn ? 'Quarantine Release Dossier' : 'Laporan Pelepasan Karantina'}</h2>
+                        <span class="mono-cell" style="font-size: 11px; color: var(--text-muted);">${report.dossier_id} • ${isEn ? 'Generated' : 'Dibuat'}: ${formatTimestamp(report.report_generated_at)}</span>
                     </div>
                     <div class="panel-actions">
                         <a href="/api/reports/export/csv?shipment_id=${reportShipmentId}" class="btn btn-secondary" download>
-                            ${icons.download} Unduh CSV
+                            ${icons.download} ${isEn ? 'Download CSV' : 'Unduh CSV'}
                         </a>
-                        <button class="btn btn-primary" onclick="window.print()">${icons.printer} Cetak Dokumen</button>
+                        <button class="btn btn-primary" onclick="window.print()">${icons.printer} ${isEn ? 'Print Document' : 'Cetak Dokumen'}</button>
                     </div>
                 </div>
 
                 <div class="grid-cards" style="margin-bottom: 24px;">
                     <div class="metric-card ${reportCardClass}">
                         <div class="metric-header">
-                            <span class="metric-label">Disposisi Karantina</span>
+                            <span class="metric-label">${isEn ? 'Quarantine Disposition' : 'Disposisi Karantina'}</span>
                             <span class="metric-icon">${icons.landmark}</span>
                         </div>
                         <div class="metric-value-row">
@@ -2870,34 +2912,34 @@ async function renderReportsView() {
 
                     <div class="metric-card card-cyan">
                         <div class="metric-header">
-                            <span class="metric-label">Kepatuhan Rantai Dingin</span>
+                            <span class="metric-label">${isEn ? 'Cold Chain Compliance' : 'Kepatuhan Rantai Dingin'}</span>
                             <span class="metric-icon">${icons.snowflake}</span>
                         </div>
                         <div class="metric-value-row">
                             <span class="metric-value">${report.summary_metrics.cold_chain_compliance_percent}%</span>
                         </div>
                         <div class="metric-footer">
-                            <span>Deviasi: ${report.summary_metrics.excursions_count} kali</span>
+                            <span>${isEn ? `Excursions: ${report.summary_metrics.excursions_count} time(s)` : `Deviasi: ${report.summary_metrics.excursions_count} kali`}</span>
                         </div>
                     </div>
 
                     <div class="metric-card card-purple">
                         <div class="metric-header">
-                            <span class="metric-label">Rekaman Telemetri</span>
+                            <span class="metric-label">${isEn ? 'Telemetry Records' : 'Rekaman Telemetri'}</span>
                             <span class="metric-icon">${icons.barChart}</span>
                         </div>
                         <div class="metric-value-row">
                             <span class="metric-value">${report.summary_metrics.total_records}</span>
-                            <span class="metric-unit">sampel</span>
+                            <span class="metric-unit">${isEn ? 'samples' : 'sampel'}</span>
                         </div>
                         <div class="metric-footer">
-                            <span>Validasi Checksum Integritas</span>
+                            <span>${isEn ? 'Integrity Checksum Validated' : 'Validasi Checksum Integritas'}</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="panel" style="background: var(--bg-surface-elevated); margin-bottom: 20px;">
-                    <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--ice-blue);">Rekomendasi Tindakan Karantina</h3>
+                    <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--ice-blue);">${isEn ? 'Quarantine Action Recommendation' : 'Rekomendasi Tindakan Karantina'}</h3>
                     <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
                         ${report.quarantine_disposition.recommended_action}
                     </p>
@@ -2905,7 +2947,7 @@ async function renderReportsView() {
             </div>
         `;
     } catch (err) {
-        el.contentBody.innerHTML = `<div class="error-state">Gagal membuat laporan: ${err.message}</div>`;
+        el.contentBody.innerHTML = `<div class="error-state">${isEn ? 'Failed to generate report:' : 'Gagal membuat laporan:'} ${err.message}</div>`;
     }
 }
 
@@ -2913,12 +2955,13 @@ async function renderReportsView() {
 // VIEW 8: SETTINGS
 // -------------------------------------------------------------
 async function renderSettingsView() {
-    el.contentBody.innerHTML = `<div class="loading-state">Memuat parameter pengaturan...</div>`;
+    const isEn = getLang() === 'en';
+    el.contentBody.innerHTML = `<div class="loading-state">${isEn ? 'Loading configuration parameters...' : 'Memuat parameter pengaturan...'}</div>`;
     try {
         const configData = await api.getConfigs().catch(() => ({ configurations: [] }));
         const configs = configData.configurations || [];
 
-        const labelMap = {
+        const labelMapId = {
             'temp_min': 'Suhu Minimum Kargo (°C)',
             'temp_max': 'Suhu Maksimum Kargo (°C)',
             'temp_deviation_duration_s': 'Toleransi Suhu Menyimpang (detik)',
@@ -2928,12 +2971,24 @@ async function renderSettingsView() {
             'door_open_max_s': 'Batas Waktu Pintu Terbuka (detik)'
         };
 
+        const labelMapEn = {
+            'temp_min': 'Minimum Cargo Temp (°C)',
+            'temp_max': 'Maximum Cargo Temp (°C)',
+            'temp_deviation_duration_s': 'Temp Excursion Duration Tolerance (s)',
+            'humidity_min': 'Minimum Relative Humidity (%)',
+            'humidity_max': 'Maximum Relative Humidity (%)',
+            'shock_threshold_g': 'Maximum Shock Limit (G)',
+            'door_open_max_s': 'Maximum Door Open Duration (s)'
+        };
+
+        const labelMap = isEn ? labelMapEn : labelMapId;
+
         el.contentBody.innerHTML = `
             <div class="panel">
                 <div class="panel-header">
                     <div>
-                        <h2 class="panel-title">${icons.settings} Pengaturan Parameter Regulasi</h2>
-                        <span style="font-size: 12px; color: var(--text-muted)">Konfigurasi ambang batas parameter telemetri untuk evaluasi risiko otomatis.</span>
+                        <h2 class="panel-title">${icons.settings} ${isEn ? 'Regulatory Parameter Configuration' : 'Pengaturan Parameter Regulasi'}</h2>
+                        <span style="font-size: 12px; color: var(--text-muted)">${isEn ? 'Configure threshold parameters for automated risk evaluation.' : 'Konfigurasi ambang batas parameter telemetri untuk evaluasi risiko otomatis.'}</span>
                     </div>
                 </div>
 
@@ -2948,7 +3003,7 @@ async function renderSettingsView() {
                     </div>
 
                     <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
-                        <button type="submit" class="btn btn-primary">Simpan Pengaturan</button>
+                        <button type="submit" class="btn btn-primary">${isEn ? 'Save Settings' : 'Simpan Pengaturan'}</button>
                     </div>
                 </form>
             </div>
@@ -2956,16 +3011,16 @@ async function renderSettingsView() {
             <div class="panel" style="margin-top: 24px; border: 1px solid rgba(239, 68, 68, 0.3);">
                 <div class="panel-header">
                     <div>
-                        <h2 class="panel-title" style="color: #ef4444;">${icons.trash} Manajemen Data & Pembersihan Riwayat</h2>
-                        <span style="font-size: 12px; color: var(--text-muted)">Hapus data sensor dan log simulasi untuk mengosongkan riwayat unit.</span>
+                        <h2 class="panel-title" style="color: #ef4444;">${icons.trash} ${isEn ? 'Data Management & History Purge' : 'Manajemen Data & Pembersihan Riwayat'}</h2>
+                        <span style="font-size: 12px; color: var(--text-muted)">${isEn ? 'Purge sensor data and simulation logs to clear unit history.' : 'Hapus data sensor dan log simulasi untuk mengosongkan riwayat unit.'}</span>
                     </div>
                 </div>
                 <div style="background: var(--bg-surface-elevated); padding: 16px; border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
                     <div>
-                        <strong style="font-size: 13px; color: var(--text-primary); display: block;">Hapus Riwayat Sensor & Log Peringatan</strong>
-                        <span style="font-size: 12px; color: var(--text-secondary);">Menghapus data rekaman tabel sensor_readings dan risk_events untuk unit ${state.selectedDeviceId}.</span>
+                        <strong style="font-size: 13px; color: var(--text-primary); display: block;">${isEn ? 'Clear Sensor History & Alert Logs' : 'Hapus Riwayat Sensor & Log Peringatan'}</strong>
+                        <span style="font-size: 12px; color: var(--text-secondary);">${isEn ? `Delete records from sensor_readings and risk_events for unit ${state.selectedDeviceId}.` : `Menghapus data rekaman tabel sensor_readings dan risk_events untuk unit ${state.selectedDeviceId}.`}</span>
                     </div>
-                    <button class="btn btn-danger" id="btn-purge-sensor-data">${icons.trash} Hapus Riwayat Sensor</button>
+                    <button class="btn btn-danger" id="btn-purge-sensor-data">${icons.trash} ${isEn ? 'Clear Sensor History' : 'Hapus Riwayat Sensor'}</button>
                 </div>
             </div>
         `;
@@ -2977,26 +3032,26 @@ async function renderSettingsView() {
                 for (const input of inputs) {
                     await api.updateConfig(input.dataset.key, input.value.trim());
                 }
-                showToast('Pengaturan berhasil disimpan', 'success');
+                showToast(isEn ? 'Settings saved successfully' : 'Pengaturan berhasil disimpan', 'success');
             } catch (err) {
-                showToast(`Gagal menyimpan: ${err.message}`, 'error');
+                showToast(isEn ? `Failed to save: ${err.message}` : `Gagal menyimpan: ${err.message}`, 'error');
             }
         });
 
         document.getElementById('btn-purge-sensor-data')?.addEventListener('click', async () => {
-            if (!confirm(`Konfirmasi: Apakah Anda yakin ingin menghapus seluruh riwayat sensor unit ${state.selectedDeviceId}?`)) {
+            if (!confirm(isEn ? `Confirmation: Are you sure you want to delete all sensor history for unit ${state.selectedDeviceId}?` : `Konfirmasi: Apakah Anda yakin ingin menghapus seluruh riwayat sensor unit ${state.selectedDeviceId}?`)) {
                 return;
             }
             try {
                 const res = await api.clearSensorData(state.selectedDeviceId);
-                showToast(res.message || 'Riwayat sensor berhasil dibersihkan', 'success');
+                showToast(res.message || (isEn ? 'Sensor history successfully cleared' : 'Riwayat sensor berhasil dibersihkan'), 'success');
                 renderSettingsView();
             } catch (err) {
-                showToast(`Gagal membersihkan data: ${err.message}`, 'error');
+                showToast(isEn ? `Failed to clear data: ${err.message}` : `Gagal membersihkan data: ${err.message}`, 'error');
             }
         });
     } catch (err) {
-        el.contentBody.innerHTML = `<div class="error-state">Gagal memuat pengaturan: ${err.message}</div>`;
+        el.contentBody.innerHTML = `<div class="error-state">${isEn ? 'Failed to load settings:' : 'Gagal memuat pengaturan:'} ${err.message}</div>`;
     }
 }
 
@@ -3040,16 +3095,18 @@ function updateMonitoringRealtime(r) {
     if (amb) amb.innerText = (r.ambient_temperature != null && !isNaN(Number(r.ambient_temperature))) ? Number(r.ambient_temperature).toFixed(1) : '28.5';
     const hum = document.getElementById('mon-humidity');
     if (hum) hum.innerText = `${(r.relative_humidity != null && !isNaN(Number(r.relative_humidity))) ? Number(r.relative_humidity).toFixed(0) : '74'}% RH`;
-    // 1. Status Pintu Kontainer (MC-38) - 100% Bahasa Indonesia
+    const isEn = getLang() === 'en';
+
+    // 1. Status Pintu Kontainer (MC-38)
     const isDoorOpen = (r.door_status === 'OPEN');
     const door = document.getElementById('mon-door');
-    if (door) door.innerText = isDoorOpen ? 'TERBUKA' : 'TERTUTUP';
+    if (door) door.innerText = isDoorOpen ? (isEn ? 'OPEN' : 'TERBUKA') : (isEn ? 'CLOSED' : 'TERTUTUP');
     const cardDoor = document.getElementById('card-mon-door');
     if (cardDoor) cardDoor.className = `metric-card ${isDoorOpen ? 'card-danger' : 'card-success'}`;
     const badgeDoor = document.getElementById('badge-mon-door');
     if (badgeDoor) badgeDoor.className = `metric-badge ${isDoorOpen ? 'crit' : 'safe'}`;
     const subDoor = document.getElementById('sub-mon-door');
-    if (subDoor) subDoor.innerText = isDoorOpen ? 'Pintu Terbuka' : 'Tertutup';
+    if (subDoor) subDoor.innerText = isDoorOpen ? (isEn ? 'Door Open' : 'Pintu Terbuka') : (isEn ? 'Closed' : 'Tertutup');
 
     // 2. Guncangan & Getaran (MPU6050)
     const ax = r.acceleration_x || 0, ay = r.acceleration_y || 0, az = r.acceleration_z || 0;
@@ -3062,40 +3119,60 @@ function updateMonitoringRealtime(r) {
     const badgeShock = document.getElementById('badge-mon-shock');
     if (badgeShock) badgeShock.className = `metric-badge ${isShock ? 'crit' : 'safe'}`;
     const subShock = document.getElementById('sub-mon-shock');
-    if (subShock) subShock.innerText = totalG !== null ? (isShock ? 'Guncangan Tinggi' : 'Getaran Normal') : 'Menunggu Data MPU';
+    if (subShock) subShock.innerText = totalG !== null ? (isShock ? (isEn ? 'High Shock' : 'Guncangan Tinggi') : (isEn ? 'Normal Vibration' : 'Getaran Normal')) : (isEn ? 'Awaiting MPU Data' : 'Menunggu Data MPU');
 
     // 3. Posisi GPS (NEO-6M)
     const isGpsFix = (r.gps_fix_status === 'FIX_3D' || r.gps_fix_status === '3D_FIX');
     const gps = document.getElementById('mon-gps');
-    if (gps) gps.innerText = isGpsFix ? '3D Fix' : (r.gps_fix_status === 'NO_FIX' ? 'Mencari Satelit' : (r.gps_fix_status || 'Mencari Satelit'));
+    if (gps) gps.innerText = isGpsFix ? '3D Fix' : (r.gps_fix_status === 'NO_FIX' ? (isEn ? 'Searching Satellites' : 'Mencari Satelit') : (r.gps_fix_status || (isEn ? 'Searching Satellites' : 'Mencari Satelit')));
     const coords = document.getElementById('mon-coords');
     if (coords) {
         coords.innerText = (r.latitude && Math.abs(r.latitude) > 0.0001) 
             ? `${Number(r.latitude).toFixed(4)}, ${Number(r.longitude).toFixed(4)}`
-            : 'Mencari Satelit (-- , --)';
+            : (isEn ? 'Searching Satellites (-- , --)' : 'Mencari Satelit (-- , --)');
     }
 
-    // 4. Evaluasi Risiko - Bahasa Indonesia Standar
+    // 4. Evaluasi Risiko
     const isCrit = (r.risk_level === 'CRITICAL');
     const isWarn = (r.risk_level === 'WARNING');
-    const riskLabel = isCrit ? 'KRITIS' : (isWarn ? 'WASPADA' : 'AMAN');
+    const riskLabel = isCrit ? (isEn ? 'CRITICAL' : 'KRITIS') : (isWarn ? (isEn ? 'WARNING' : 'WASPADA') : (isEn ? 'SAFE' : 'AMAN'));
     const risk = document.getElementById('mon-risk');
     if (risk) risk.innerText = riskLabel;
     const cardRisk = document.getElementById('card-mon-risk');
     if (cardRisk) cardRisk.className = `metric-card ${isCrit ? 'card-danger' : (isWarn ? 'card-warning' : 'card-success')}`;
     const badgeRisk = document.getElementById('badge-mon-risk');
-    if (badgeRisk) badgeRisk.className = `metric-badge ${isCrit ? 'crit' : (isWarn ? 'warn' : 'safe')}`;
+    if (badgeRisk) {
+        badgeRisk.className = `metric-badge ${isCrit ? 'crit' : (isWarn ? 'warn' : 'safe')}`;
+        badgeRisk.innerText = isEn ? 'Risk Status' : 'Status Risiko';
+    }
     const reason = document.getElementById('mon-risk-reason');
     if (reason) {
-        let rTxt = r.risk_reasons || 'Normal';
-        rTxt = rTxt.replace(/DOOR_OPEN/g, 'Pintu Terbuka')
-                   .replace(/TEMP_OUT_OF_BOUNDS/g, 'Suhu Diluar Batas')
-                   .replace(/SHOCK_DETECTED/g, 'Guncangan Terdeteksi')
-                   .replace(/Skor:/g, 'Skor Risiko: ');
+        let rTxt = r.risk_reasons || (isEn ? 'Normal Conditions' : 'Kondisi Normal');
+        if (isEn) {
+            rTxt = rTxt.replace(/DOOR_OPEN/g, 'Door Opened')
+                       .replace(/TEMP_OUT_OF_BOUNDS/g, 'Temperature Excursion')
+                       .replace(/SHOCK_DETECTED/g, 'Shock Detected')
+                       .replace(/Skor:/g, 'Risk Score: ')
+                       .replace(/Pintu Terbuka/g, 'Door Opened')
+                       .replace(/Suhu Diluar Batas/g, 'Temperature Excursion')
+                       .replace(/Guncangan Terdeteksi/g, 'Shock Detected')
+                       .replace(/Skor Risiko:/g, 'Risk Score: ')
+                       .replace(/Kondisi Normal/g, 'Normal Conditions');
+        } else {
+            rTxt = rTxt.replace(/DOOR_OPEN/g, 'Pintu Terbuka')
+                       .replace(/TEMP_OUT_OF_BOUNDS/g, 'Suhu Diluar Batas')
+                       .replace(/SHOCK_DETECTED/g, 'Guncangan Terdeteksi')
+                       .replace(/Skor:/g, 'Skor Risiko: ')
+                       .replace(/Door Opened/g, 'Pintu Terbuka')
+                       .replace(/Temperature Excursion/g, 'Suhu Diluar Batas')
+                       .replace(/Shock Detected/g, 'Guncangan Terdeteksi')
+                       .replace(/Risk Score:/g, 'Skor Risiko: ')
+                       .replace(/Normal Conditions/g, 'Kondisi Normal');
+        }
         reason.innerText = rTxt;
     }
     const ts = document.getElementById('mon-last-sample');
-    if (ts) ts.innerText = `Pembaruan: ${formatTimestamp(r.timestamp)}`;
+    if (ts) ts.innerText = `${isEn ? 'Updated: ' : 'Pembaruan: '}${formatTimestamp(r.timestamp)}`;
 
     // Update Header Trace Badges & Gradient Stats
     const tr1 = document.getElementById('trace-p1');
@@ -3114,7 +3191,9 @@ function updateMonitoringRealtime(r) {
         if (trDelta) trDelta.innerText = `${delta.toFixed(1)}°C`;
         if (trGrad) {
             trGrad.className = `status-pill ${delta <= 2.0 ? 'NORMAL' : 'CAUTION'}`;
-            trGrad.innerText = delta <= 2.0 ? 'HOMOGEN' : 'VARIASI TINGGI';
+            trGrad.innerText = delta <= 2.0 
+                ? (isEn ? 'HOMOGENEOUS' : 'HOMOGEN') 
+                : (isEn ? 'HIGH GRADIENT' : 'VARIASI TINGGI');
         }
     } else {
         if (trDelta) trDelta.innerText = '--';
@@ -3196,12 +3275,13 @@ function startPolling() {
             }
 
             // Polling Data Telemetri & Status Wi-Fi ESP32 secara Realtime
+            const isEn = getLang() === 'en';
             const latestData = await api.getLatest(state.selectedDeviceId).catch(() => null);
             if (latestData) {
                 const r = latestData.reading;
                 const wifiBackendStatus = latestData.wifi_status; // 'ONLINE' | 'OFFLINE'
                 let isWifiOnline = false;
-                let formattedTime = 'Baru saja (Real-time)';
+                let formattedTime = isEn ? 'Just now (Real-time)' : 'Baru saja (Real-time)';
 
                 if (r) {
                     const ts = r.created_at || r.timestamp;
@@ -3219,9 +3299,9 @@ function startPolling() {
                 }
 
                 updateWifiStatus(isWifiOnline ? 'online' : 'offline', {
-                    syncText: isWifiOnline ? `Live ${new Date().toLocaleTimeString()}` : 'Offline (MicroSD)',
+                    syncText: isWifiOnline ? `Live ${new Date().toLocaleTimeString()}` : (isEn ? 'Offline (MicroSD)' : 'Offline (MicroSD)'),
                     lastSeenFormatted: formattedTime,
-                    subText: isWifiOnline ? 'Realtime Stream' : 'Mode Offline'
+                    subText: isWifiOnline ? (isEn ? 'Realtime Stream' : 'Realtime Stream') : (isEn ? 'Offline Mode' : 'Mode Offline')
                 });
 
                 // Real-time live update jika user sedang membuka halaman monitoring (Zero-Delay 500ms)
@@ -3245,23 +3325,24 @@ function startPolling() {
                     }
                     if (statusEl && r.gps_fix_status) {
                         const is3D = (r.gps_fix_status === 'FIX_3D' || r.gps_fix_status === '3D_FIX');
-                        statusEl.innerText = is3D ? '● 3D Fix' : (r.gps_fix_status === 'NO_FIX' ? '○ Mencari Satelit' : `● ${r.gps_fix_status}`);
+                        statusEl.innerText = is3D ? '● 3D Fix' : (r.gps_fix_status === 'NO_FIX' ? (isEn ? '○ Searching Satellites' : '○ Mencari Satelit') : `● ${r.gps_fix_status}`);
                         statusEl.style.color = is3D ? 'var(--status-normal)' : '#f59e0b';
                     }
                     if (tempEl && r.temperature_probe_2 !== null && r.temperature_probe_2 !== undefined) {
-                        tempEl.innerText = `${Number(r.temperature_probe_2).toFixed(1)}°C (Inti)`;
+                        tempEl.innerText = `${Number(r.temperature_probe_2).toFixed(1)}°C ${isEn ? '(Core)' : '(Inti)'}`;
                     }
                 }
             } else {
                 updateWifiStatus('offline', {
-                    syncText: 'Server Offline',
-                    subText: 'Koneksi Terputus'
+                    syncText: isEn ? 'Server Offline' : 'Server Offline',
+                    subText: isEn ? 'Connection Lost' : 'Koneksi Terputus'
                 });
             }
         } catch (e) {
+            const isEn = getLang() === 'en';
             updateWifiStatus('offline', {
-                syncText: 'Server Offline',
-                subText: 'Koneksi Terputus'
+                syncText: isEn ? 'Server Offline' : 'Server Offline',
+                subText: isEn ? 'Connection Lost' : 'Koneksi Terputus'
             });
         } finally {
             isPolling = false;
@@ -3274,26 +3355,27 @@ function startPolling() {
 // -------------------------------------------------------------
 function checkAuth() {
     const savedUser = localStorage.getItem('qguard_user');
+    const isEn = getLang() === 'en';
     if (savedUser) {
         try {
             const user = JSON.parse(savedUser);
             state.user = user;
-            if (el.topbarUserName) el.topbarUserName.innerText = user.name || 'Petugas Barantin';
+            if (el.topbarUserName) el.topbarUserName.innerText = user.name || (isEn ? 'Quarantine Officer' : 'Petugas Barantin');
             if (el.topbarUserEmail) el.topbarUserEmail.innerText = user.username || 'barantin@gmail.com';
 
             // Update landing page login button to "Buka Dashboard"
-            if (btnLandingLoginText) btnLandingLoginText.innerText = 'Buka Dashboard';
-            if (btnLandingMobileLoginText) btnLandingMobileLoginText.innerText = 'Buka Dashboard';
-            if (btnHeroDashboardText) btnHeroDashboardText.innerText = 'Buka Dashboard';
+            if (btnLandingLoginText) btnLandingLoginText.innerText = isEn ? 'Open Dashboard' : 'Buka Dashboard';
+            if (btnLandingMobileLoginText) btnLandingMobileLoginText.innerText = isEn ? 'Open Dashboard' : 'Buka Dashboard';
+            if (btnHeroDashboardText) btnHeroDashboardText.innerText = isEn ? 'Open Dashboard' : 'Buka Dashboard';
             return true;
         } catch (e) {}
     }
     
     // Not logged in
     state.user = null;
-    if (btnLandingLoginText) btnLandingLoginText.innerText = 'Masuk Dashboard';
-    if (btnLandingMobileLoginText) btnLandingMobileLoginText.innerText = 'Masuk Dashboard';
-    if (btnHeroDashboardText) btnHeroDashboardText.innerText = 'Masuk Dashboard';
+    if (btnLandingLoginText) btnLandingLoginText.innerText = isEn ? 'Dashboard Login' : 'Masuk Dashboard';
+    if (btnLandingMobileLoginText) btnLandingMobileLoginText.innerText = isEn ? 'Dashboard Login' : 'Masuk Dashboard';
+    if (btnHeroDashboardText) btnHeroDashboardText.innerText = isEn ? 'Dashboard Login' : 'Masuk Dashboard';
     return false;
 }
 
@@ -3839,7 +3921,11 @@ function initHeroDeviceStage() {
 
     // Re-render active dashboard view or update UI on language change
     window.addEventListener('languageChanged', () => {
-        if (state.user && ADMIN_ROUTES.has(state.currentView)) {
+        checkAuth();
+        if (state.wifiStatus) {
+            updateWifiStatus(state.wifiStatus);
+        }
+        if (el.appLayout && !el.appLayout.classList.contains('hidden') && ADMIN_ROUTES.has(state.currentView)) {
             renderCurrentView();
         }
     });
